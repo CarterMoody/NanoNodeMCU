@@ -47,8 +47,11 @@
 // White Hall Sensor B Vout = UNUSED
 
 #include <Arduino.h>
+#include <NTPClient.h>
+// https://github.com/arduino-libraries/NTPClient
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
+#include <WiFiUdp.h>
 #include <ArduinoJson.h>
 // https://github.com/bblanchon/ArduinoJson
 #include <WebSocketsClient.h>
@@ -69,12 +72,25 @@ WebSocketsClient webSocket;
 #define motor1A_PIN D1
 #define motor1B_PIN D7
 
-#define minimum_threshold_Mnano 0
+// Global to be set to minimum required Mnano NANO donation before reacting
+const float minimum_threshold_Mnano = 0;
+
+// Global keeps track of last hour feed was dispensed
+int lastFeedHour = 0;
 
 #define USE_SERIAL Serial
 
 StaticJsonDocument<200> doc;
 StaticJsonDocument<1024> rx_doc;
+
+
+const long utcOffsetInSeconds = 3600;
+
+char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+// Define NTP Client to get time
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
 
 // Stops the motors
@@ -151,6 +167,110 @@ void fadeLED(){
 }
 
 
+
+
+void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
+
+  switch(type) {
+    case WStype_DISCONNECTED:
+      printTimeStamp();
+      Serial.printf("[WSc] Disconnected!\n");
+      break;
+    case WStype_CONNECTED:
+      printTimeStamp();
+      Serial.printf("[WSc] Connected to url: %s\n", payload);
+
+      // send message to server when Connected
+      
+      doc["address"] = TRACKING_ADDRESS;
+      doc["api_key"] = "0";
+      char output[512];
+      serializeJson(doc, output);
+      printTimeStamp();
+      Serial.println(output);
+      webSocket.sendTXT(output);
+
+      //fadeLED(); // to signify connected
+      blinkInternal(ESP12_LED, 2, 500); // to signify connected
+      //blinkNodeMCU(3, 500);
+      break;
+      
+    case WStype_TEXT:
+    {
+      printTimeStamp();
+      Serial.printf("[WSc] get text: %s\n", payload);
+      deserializeJson(rx_doc, payload);
+      String block_amount_raw = rx_doc["amount"];
+
+      // Convert to nano
+      int nanoIndex = block_amount_raw.length() - 24;
+      String block_amount_nano_string = block_amount_raw;
+      block_amount_nano_string.remove(nanoIndex);
+      int block_amount_nano = block_amount_nano_string.toInt();
+      
+      double block_amount_Mnano = block_amount_nano / (pow(10, 6));
+
+      printTimeStamp();
+      Serial.print("Amount in raw: ");
+      Serial.println(block_amount_raw);   
+      printTimeStamp();   
+      Serial.print("Amount in NANO/Nano/Mnano: ");
+      Serial.println(block_amount_Mnano);
+
+      // Check if Donation amount > minimumThreshold
+      if (block_amount_raw.toInt() > minimum_threshold_Mnano) {
+          runMotorClockWise(1000);
+        }
+      }
+      break;
+    
+    case WStype_BIN:
+      printTimeStamp();
+      Serial.printf("[WSc] get binary length: %u\n", length);
+      hexdump(payload, length);
+
+      // send data to server
+      // webSocket.sendBIN(payload, length);
+      break;
+    case WStype_ERROR:      
+    case WStype_FRAGMENT_TEXT_START:
+    case WStype_FRAGMENT_BIN_START:
+    case WStype_FRAGMENT:
+    case WStype_FRAGMENT_FIN:
+      break;
+  }
+
+}
+
+// Compare current Hour to lastFeedHour, if different then feed
+void checkHourlyFeed(){
+  int currentHour = timeClient.getHours();
+  if (currentHour != lastFeedHour){
+    printTimeStamp();
+    Serial.println("Have not fed this hour");
+    runMotorClockWise(1000);
+    lastFeedHour = currentHour;
+  }
+}
+
+void printTime(){
+  Serial.print(daysOfTheWeek[timeClient.getDay()]);
+  Serial.print(", ");
+  Serial.print(timeClient.getHours());
+  Serial.print(":");
+  Serial.print(timeClient.getMinutes());
+  Serial.print(":");
+  Serial.println(timeClient.getSeconds());
+  //Serial.println(timeClient.getFormattedTime());
+}
+
+void printTimeStamp(){
+  Serial.print("[");
+  Serial.print(timeClient.getFormattedTime());
+  Serial.print("] ");
+}
+
+
 void setup() {
   // put your setup code here, to run once:
   // USE_SERIAL.begin(921600);
@@ -164,6 +284,7 @@ void setup() {
   USE_SERIAL.println();
   
   for(uint8_t t = 4; t > 0; t--) {
+    printTimeStamp();
     USE_SERIAL.printf("[SETUP] BOOT WAIT %d...\n", t);
     USE_SERIAL.flush();
     delay(1000);
@@ -189,7 +310,6 @@ void setup() {
    pinMode(motor1A_PIN, OUTPUT);
    pinMode(motor1B_PIN, OUTPUT);
    pinMode(LED_PIN, OUTPUT);
-   //pinMode(LED_BUILTIN, OUTPUT);
    pinMode(NodeMCU_LED, OUTPUT); // Internal LED on NodeMCU
    pinMode(ESP12_LED, OUTPUT); // Internal LED on ESP-12
 
@@ -199,78 +319,20 @@ void setup() {
     // Stop the motor
    stopMotors();
 
+   timeClient.begin();
+   timeClient.update();
+   printTime();
+
    blinkInternal(NodeMCU_LED, 3, 500);
+   printTimeStamp();
    Serial.println("Setup Complete");
    
 }
 
-void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
-
-  switch(type) {
-    case WStype_DISCONNECTED:
-      Serial.printf("[WSc] Disconnected!\n");
-      break;
-    case WStype_CONNECTED:
-      Serial.printf("[WSc] Connected to url: %s\n", payload);
-
-      // send message to server when Connected
-      
-      doc["address"] = TRACKING_ADDRESS;
-      doc["api_key"] = "0";
-      char output[512];
-      serializeJson(doc, output);
-      Serial.println(output);
-      webSocket.sendTXT(output);
-
-      //fadeLED(); // to signify connected
-      blinkInternal(ESP12_LED, 2, 500); // to signify connected
-      //blinkNodeMCU(3, 500);
-      break;
-      
-    case WStype_TEXT:
-    {
-      Serial.printf("[WSc] get text: %s\n", payload);
-      deserializeJson(rx_doc, payload);
-      String block_amount_raw = rx_doc["amount"];
-
-      // Convert to nano
-      int nanoIndex = block_amount_raw.length() - 24;
-      String block_amount_nano_string = block_amount_raw;
-      block_amount_nano_string.remove(nanoIndex);
-      int block_amount_nano = block_amount_nano_string.toInt();
-      
-      double block_amount_Mnano = block_amount_nano / (pow(10, 6));
-      
-      Serial.print("Amount in raw: ");
-      Serial.println(block_amount_raw);      
-      Serial.print("Amount in NANO/Nano/Mnano: ");
-      Serial.println(block_amount_Mnano);
-
-      // Check if Donation amount > minimumThreshold
-      if (block_amount_raw.toInt() > minimum_threshold_Mnano) {
-          runMotorClockWise(1000);
-        }
-      }
-      break;
-    
-    case WStype_BIN:
-      Serial.printf("[WSc] get binary length: %u\n", length);
-      hexdump(payload, length);
-
-      // send data to server
-      // webSocket.sendBIN(payload, length);
-      break;
-    case WStype_ERROR:      
-    case WStype_FRAGMENT_TEXT_START:
-    case WStype_FRAGMENT_BIN_START:
-    case WStype_FRAGMENT:
-    case WStype_FRAGMENT_FIN:
-      break;
-  }
-
-}
-
 void loop() {
   // put your main code here, to run repeatedly:
+  timeClient.update();
+  checkHourlyFeed();
+  
   webSocket.loop();
 }
