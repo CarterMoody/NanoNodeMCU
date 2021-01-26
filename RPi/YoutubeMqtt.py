@@ -183,10 +183,12 @@ def checkWaitedEnough(key, msgTime):
 
 
 def richCommand(command, msgAuthorName):
-    responseMessage = "Thanks %s, I'm processing your %s command now!" % (
-        msgAuthorName, command)
-    send_chat(responseMessage)
-    executeCommand(command)
+    if (command == '!feed'):
+        #responseMessage = "Thanks %s, I'm processing your %s command now!" % (
+        #    msgAuthorName, command)
+        responseMessage = "Thanks %s for feeding the birds!" % (msgAuthorName)
+        send_chat(responseMessage)
+        executeCommand(command)
 
 
 def executeCommand(command):

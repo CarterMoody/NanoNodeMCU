@@ -55,19 +55,19 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <WiFiUdp.h>
-#include <ArduinoJson.h>      // https://github.com/bblanchon/ArduinoJson
+#include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson
 #include <WebSocketsClient.h> // https://github.com/Links2004/arduinoWebSockets/tree/master/src
-#include "Adafruit_MQTT.h"
-#include "Adafruit_MQTT_Client.h"
-/************************* WiFi Access Point *********************************/
-#define WLAN_SSID "MoodyManor"
-#define WLAN_PASS "Whitecars01!"
-#define MQTT_SERVER "192.168.1.118" // static ip address
-#define MQTT_PORT 1883
-#define MQTT_USERNAME ""
-#define MQTT_PASSWORD ""
+#include "Adafruit_MQTT.h" 
+#include "Adafruit_MQTT_Client.h" 
+/************************* WiFi Access Point *********************************/ 
+#define WLAN_SSID       "MoodyManor" 
+#define WLAN_PASS        "Whitecars01!" 
+#define MQTT_SERVER      "192.168.1.118" // static ip address
+#define MQTT_PORT         1883                    
+#define MQTT_USERNAME    "" 
+#define MQTT_PASSWORD         ""
 #define TRACKING_ADDRESS "nano_1ae75uxbfmpdqreejgziwut1ufj7e9othf1efo1byfocsjuoe63rtdmo1fg4"
-#define LED_PIN D1 // Pin connected to the LED
+#define LED_PIN     D1                // Pin connected to the LED
 #define NodeMCU_LED 16
 #define ESP12_LED 2
 #define motor1A_PIN D1
@@ -75,18 +75,19 @@
 #define USE_SERIAL Serial
 /************ Globals ***********************/
 const float minimum_threshold_Mnano = 0; // Global to be set to minimum required Mnano NANO donation before reacting
-int lastFeedHour = 0;                    // Global keeps track of last hour feed was dispensed
-/************ Global State ******************/
-// Create an ESP8266 WiFiClient class to connect to the MQTT server.
+int lastFeedHour = 0; // Global keeps track of last hour feed was dispensed
+int global_mqtt_retries = 3; // Global keeps track of how many time we will try the mqtt_check() procedure
+/************ Global State ******************/ 
+// Create an ESP8266 WiFiClient class to connect to the MQTT server. 
 WiFiClient client;
 WebSocketsClient webSocket;
-// Setup the MQTT client class by passing in the WiFi client and MQTT server and login details.
-Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD);
-/****************************** Feeds ***************************************/
-// Setup a feed called 'pi_led' for publishing.
-// Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname>
-Adafruit_MQTT_Publish pi_led = Adafruit_MQTT_Publish(&mqtt, MQTT_USERNAME "/leds/pi");
-// Setup a feed called 'esp8266_led' for subscribing to changes.
+// Setup the MQTT client class by passing in the WiFi client and MQTT server and login details. 
+Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD); 
+/****************************** Feeds ***************************************/ 
+// Setup a feed called 'pi_led' for publishing. 
+// Notice MQTT paths for AIO follow the form: <username>/feeds/<feedname> 
+Adafruit_MQTT_Publish pi_led = Adafruit_MQTT_Publish(&mqtt, MQTT_USERNAME "/leds/pi"); 
+// Setup a feed called 'esp8266_led' for subscribing to changes. 
 Adafruit_MQTT_Subscribe esp8266_led = Adafruit_MQTT_Subscribe(&mqtt, MQTT_USERNAME "/leds/esp8266");
 /*************************** ArduinoJson Stuff ******************************/
 StaticJsonDocument<200> doc;
@@ -112,147 +113,143 @@ void printTimeStamp();
 void MQTT_connect();
 void Mqtt_check();
 
-/*************************** Sketch Code ************************************/
-void setup()
-{
-    Serial.begin(115200);
-    USE_SERIAL.setDebugOutput(true);
-    bootMessage();
-    // Initalize the pins for output
-    pinMode(motor1A_PIN, OUTPUT);
-    pinMode(motor1B_PIN, OUTPUT);
-    pinMode(LED_PIN, OUTPUT);
-    pinMode(NodeMCU_LED, OUTPUT);    // Internal LED on NodeMCU
-    pinMode(ESP12_LED, OUTPUT);      // Internal LED on ESP-12
-    digitalWrite(NodeMCU_LED, HIGH); // Turn off LED
-    digitalWrite(ESP12_LED, HIGH);   // Turn off LED
 
-    Serial.print("Connecting to ");
-    Serial.println(WLAN_SSID);
-    WiFi.begin(WLAN_SSID, WLAN_PASS);
-    while (WiFi.status() != WL_CONNECTED)
-    {
-        delay(500);
-        Serial.print(".");
-    }
-    Serial.println();
-    Serial.println("WiFi connected");
-    Serial.println("IP address: ");
-    Serial.println(WiFi.localIP());
+/*************************** Sketch Code ************************************/ 
+void setup() { 
+ Serial.begin(115200);
+ USE_SERIAL.setDebugOutput(true);
+ bootMessage();
+ // Initalize the pins for output
+ pinMode(motor1A_PIN, OUTPUT);
+ pinMode(motor1B_PIN, OUTPUT);
+ pinMode(LED_PIN, OUTPUT);
+ pinMode(NodeMCU_LED, OUTPUT); // Internal LED on NodeMCU
+ pinMode(ESP12_LED, OUTPUT);   // Internal LED on ESP-12
+ digitalWrite(NodeMCU_LED, HIGH); // Turn off LED
+ digitalWrite(ESP12_LED, HIGH);   // Turn off LED
 
-    //WiFiMulti.addAP(WIFISSID, WIFIPASS);
+ Serial.print("Connecting to "); 
+ Serial.println(WLAN_SSID); 
+ WiFi.begin(WLAN_SSID, WLAN_PASS); 
+ while (WiFi.status() != WL_CONNECTED) { 
+   delay(500); 
+   Serial.print("."); 
+ } 
+ Serial.println(); 
+ Serial.println("WiFi connected"); 
+ Serial.println("IP address: "); Serial.println(WiFi.localIP()); 
 
-    //WiFi.disconnect();
-    //while (WiFiMulti.run() != WL_CONNECTED)
-    //{
-    //delay(100);
-    //}
+ //WiFiMulti.addAP(WIFISSID, WIFIPASS);
 
-    // server address, port and URL
-    webSocket.begin("yapraiwallet.space", 80, "/call");
+ //WiFi.disconnect();
+ //while (WiFiMulti.run() != WL_CONNECTED)
+ //{
+   //delay(100);
+ //}
 
-    // event handler
-    webSocket.onEvent(webSocketEvent);
+ // server address, port and URL
+ webSocket.begin("yapraiwallet.space", 80, "/call");
 
-    // try ever 5000 again if connection has failed
-    webSocket.setReconnectInterval(5000);
-    // Setup MQTT subscription for esp8266_led feed.
-    mqtt.subscribe(&esp8266_led);
+ // event handler
+ webSocket.onEvent(webSocketEvent);
 
-    // Stop the motor
-    stopMotors();
+ // try ever 5000 again if connection has failed. Default was a 5000 (5 second) delay
+ webSocket.setReconnectInterval(100);
+ // Setup MQTT subscription for esp8266_led feed. 
+ mqtt.subscribe(&esp8266_led);
 
-    timeClient.begin();
-    timeClient.update();
-    printTime();
+ // Stop the motor
+ stopMotors();
 
-    blinkInternal(NodeMCU_LED, 3, 500);
-    printTimeStamp();
-    Serial.println("Setup Complete");
+ timeClient.begin();
+ timeClient.update();
+ printTime();
+
+ blinkInternal(NodeMCU_LED, 3, 500);
+ printTimeStamp();
+ Serial.println("Setup Complete");
 }
 
-uint32_t x = 0;
+uint32_t x=0;
 
-void loop()
-{
-    timeClient.update();
-    checkHourlyFeed();
-    mqtt_check();
-    webSocket.loop();
+void loop() {
+  timeClient.update();
+  checkHourlyFeed();
+  mqtt_check();
+  webSocket.loop();
+  webSocket.sendPing();
 }
 
-void mqtt_check()
-{
-    // Ensure the connection to the MQTT server is alive (this will make the first
-    // connection and automatically reconnect when disconnected).  See the MQTT_connect
-    MQTT_connect();
-    // this is our 'wait for incoming subscription packets' busy subloop
-    // try to spend your time here
-    // Here its read the subscription
-    Adafruit_MQTT_Subscribe *subscription;
-    while ((subscription = mqtt.readSubscription()))
-    {
-        if (subscription == &esp8266_led)
-        {
-            char *message = (char *)esp8266_led.lastread;
-            Serial.print(F("Got: "));
-            Serial.println(message);
-            // Check if the message was ON, OFF, TOGGLE, or RUNMOTOR
-            if (strncmp(message, "ON", 2) == 0)
-            {
-                // Turn the LED on.
-                digitalWrite(LED_PIN, HIGH);
-            }
-            else if (strncmp(message, "OFF", 3) == 0)
-            {
-                // Turn the LED off.
-                digitalWrite(LED_PIN, LOW);
-            }
-            else if (strncmp(message, "TOGGLE", 6) == 0)
-            {
-                // Toggle the LED.
-                digitalWrite(LED_PIN, !digitalRead(LED_PIN));
-            }
-            else if (strncmp(message, "RUNMOTOR", 8) == 0)
-            {
-                // Run those motors boiiiiii
-                runMotorClockWise(1000);
-            }
-        }
-    }
-    //delay(20); // not sure if needed
+
+
+
+void mqtt_check(){
+ // Ensure the connection to the MQTT server is alive (this will make the first 
+ // connection and automatically reconnect when disconnected).  See the MQTT_connect
+ if (global_mqtt_retries != 0){
+   MQTT_connect();
+ }
+ if (! (mqtt.connected()) ){
+   Serial.println("mqtt not connected, returning");
+   return;
+ }
+     
+ // this is our 'wait for incoming subscription packets' busy subloop 
+ // try to spend your time here 
+ // Here its read the subscription 
+ Adafruit_MQTT_Subscribe *subscription; 
+ while ((subscription = mqtt.readSubscription())) { 
+   if (subscription == &esp8266_led) { 
+     char *message = (char *)esp8266_led.lastread; 
+     Serial.print(F("Got: ")); 
+     Serial.println(message); 
+        // Check if the message was ON, OFF, TOGGLE, or RUNMOTOR 
+     if (strncmp(message, "ON", 2) == 0) { 
+       // Turn the LED on. 
+       digitalWrite(LED_PIN, HIGH); 
+     } 
+     else if (strncmp(message, "OFF", 3) == 0) { 
+       // Turn the LED off. 
+       digitalWrite(LED_PIN, LOW); 
+     } 
+     else if (strncmp(message, "TOGGLE", 6) == 0) { 
+       // Toggle the LED. 
+       digitalWrite(LED_PIN, !digitalRead(LED_PIN)); 
+     }
+     else if (strncmp(message, "RUNMOTOR", 8) == 0) {
+       // Run those motors boiiiiii
+       runMotorClockWise(1000);
+     }
+   } 
+ } 
+ //delay(20); // not sure if needed
 }
 
-// Function to connect and reconnect as necessary to the MQTT server.
-void MQTT_connect()
-{
-    int8_t ret;
-    // Stop if already connected.
-    if (mqtt.connected())
-    {
-        return;
-    }
-    Serial.print("Connecting to MQTT... ");
-    uint8_t retries = 3;
-    while ((ret = mqtt.connect()) != 0)
-    { // connect will return 0 for connected
-        Serial.println(mqtt.connectErrorString(ret));
-        Serial.println("Retrying MQTT connection in 5 seconds...");
-        mqtt.disconnect();
-        delay(5000); // wait 5 seconds
-        retries--;
-        if (retries == 0)
-        {
-            // basically die and wait for WDT to reset me
-            while (1)
-                ;
-        }
-    }
-    Serial.println("MQTT Connected!");
+// Function to connect and reconnect as necessary to the MQTT server. 
+void MQTT_connect() { 
+ int8_t ret; 
+ // Stop if already connected. 
+ if (mqtt.connected()) { 
+   return; 
+ } 
+ Serial.print("Connecting to MQTT... "); 
+ uint8_t local_retries = 3; 
+ while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected 
+      Serial.println(mqtt.connectErrorString(ret)); 
+      Serial.println("Retrying MQTT connection in 5 seconds..."); 
+      mqtt.disconnect(); 
+      delay(5000);  // wait 5 seconds 
+      local_retries--; 
+      if (local_retries == 0) { 
+        // basically die and wait for WDT to reset me 
+        //while (1);
+        global_mqtt_retries--;
+      } 
+ } 
+ Serial.println("MQTT Connected!"); 
 }
 
-void bootMessage()
-{
+void bootMessage(){
     for (uint8_t t = 4; t > 0; t--)
     {
         printTimeStamp();
@@ -369,7 +366,7 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
         webSocket.sendTXT(output);
 
         //fadeLED(); // to signify connected
-        blinkInternal(ESP12_LED, 2, 500); // to signify connected
+        //blinkInternal(ESP12_LED, 2, 500); // to signify connected. Commented out to conserve time
         //blinkNodeMCU(3, 500);
         break;
 
