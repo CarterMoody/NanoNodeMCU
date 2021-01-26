@@ -20,6 +20,8 @@
 // D2 = Purple to resistor on breadboard before LED
 // D1 = Gray to IN1 (1st pin) on Motor Controller unit
 // D7 = Yellow to IN2 (2nd pin) on Motor Controller unit // This has some output on boot, but less than D3
+// D5 = Yellow to motor
+// D6 = White to motor
 // GND = Black to breadboard Ground rail connected to LED
 // GND = Black to GND on L298N
 // VIN = Red to +5V on L298N (this powers the NodeMCU, there is a regulator on NodeMCU from VIN that steps it down to 3.3v)
@@ -57,8 +59,8 @@ ESP8266WiFiMulti WiFiMulti;
 WebSocketsClient webSocket;
 
 #define TRACKING_ADDRESS "nano_1ae75uxbfmpdqreejgziwut1ufj7e9othf1efo1byfocsjuoe63rtdmo1fg4"
-#define WIFISSID "MoodyManor"
-#define WIFIPASS "Whitecars01!"
+#define WIFISSID "Simmons"
+#define WIFIPASS "moonshine"
 
 #define LED_PIN D2
 
@@ -110,7 +112,7 @@ void runMotorClockWise(int run_time)
 }
 
 // Run motors for given time. Swap which pin is high/low to change direction of spin
-void runMotorCounterClockWise(int run_time)
+void runMotorCounerClockWise(int run_time)
 {
     digitalWrite(LED_PIN, HIGH);
 
