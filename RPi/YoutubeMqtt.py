@@ -47,6 +47,8 @@ global pytchatObj
 global client
 #####################
 
+my_channel_name = "Patagonian Duck"
+
 
 # USER PLEASE CHANGE #
 FEED_INTERVAL_SECONDS = 30 # Set this to amount of time before same user can 
@@ -360,7 +362,7 @@ def main():
             
             # Check if user used a command, and if it should feed
             #parseChat(c.datetime, c.author.name, c.message)
-            if (msg.author.name != "Patagonian Duck"): # Don't respond to myself
+            if (msg.author.name == my_channel_name): # Don't respond to myself
                 continue
             else:
                 respond(msg)
