@@ -60,8 +60,8 @@
 #include "Adafruit_MQTT.h" 
 #include "Adafruit_MQTT_Client.h" 
 /************************* WiFi Access Point *********************************/ 
-#define WLAN_SSID       "" 
-#define WLAN_PASS        "" 
+#define WLAN_SSID       "MoodyManor" 
+#define WLAN_PASS        "Whitecars01!" 
 #define MQTT_SERVER      "192.168.1.118" // static ip address
 #define MQTT_PORT         1883                    
 #define MQTT_USERNAME    "" 
@@ -208,7 +208,7 @@ void mqtt_check(){
        digitalWrite(LED_PIN, !digitalRead(LED_PIN)); 
      }
      else if (strncmp(message, "RUNMOTOR", 8) == 0) {
-       // Run those motors
+       // Run those motors boiiiiii
        runMotorClockWise(1000);
      }
    } 
