@@ -8,8 +8,11 @@ Most of the credit must be given to this writeup: https://medium.com/the-nano-ce
 Description of Folders/Files: (all of these monitor NTP server)
 
 NanoMqtt: Monitors Nano Network and mqtt server (RPI)
+
 NanoNodeMCU: Monitors Nano Network
+
 NodeMCU: Monitors mqtt server
+
 
 Pinouts are described in the .ino code file
 I'll be adding some in-depth instructions: https://docs.google.com/document/d/11qHZTV_VtY0-6eIIvyDKzXHq9InnWSXJNmRCBqyEh5M/edit?usp=sharing
