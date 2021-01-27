@@ -12,9 +12,7 @@ NanoNodeMCU: Monitors Nano Network
 NodeMCU: Monitors mqtt server
 
 Pinouts are described in the .ino code file
-I'll be adding some in-depth instructions here momentarily. Thank you for your patience. For now, here are all of the helpful links I've used to make this project a reality:
-
-https://docs.google.com/document/d/1Bvy-S3CbK4M-S8zQtYwNilS4w4dM4Wyr_JP3x8eUllk/edit?usp=sharing
+I'll be adding some in-depth instructions: https://docs.google.com/document/d/11qHZTV_VtY0-6eIIvyDKzXHq9InnWSXJNmRCBqyEh5M/edit?usp=sharing
 
 
 Materials (Cost in USD):
