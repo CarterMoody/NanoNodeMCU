@@ -12,7 +12,7 @@ from json import dumps, loads
 import httplib2
 from oauth2client.file import Storage
 import cgi
-import paho.mqtt.client as mqtt  # mqtt server stuff
+#import paho.mqtt.client as mqtt  # mqtt server stuff
 
 PY3 = sys.version_info[0] == 3
 if PY3:
@@ -86,47 +86,47 @@ msg_instruction = "Remember, you can feed at any time by sending ANY amount of $
 ########### MQTT ###########################
 
 
-def on_connect(client, userdata, flags, rc):
-   print("Connected with result code " + str(rc))
-   # Subscribing in on_connect() means that if we lose the connection and
-   # reconnect then subscriptions will be renewed.
-   client.subscribe("/leds/pi")
-# The callback for when a PUBLISH message is received from the server.
+# def on_connect(client, userdata, flags, rc):
+   # print("Connected with result code " + str(rc))
+   # # Subscribing in on_connect() means that if we lose the connection and
+   # # reconnect then subscriptions will be renewed.
+   # client.subscribe("/leds/pi")
+# # The callback for when a PUBLISH message is received from the server.
 
 
 
-def on_message(client, userdata, msg):
-   print(msg.topic+" "+str(msg.payload))
-   # Check if this is a message for the Pi LED.
-   if msg.topic == '/leds/pi':
-       # Look at the message data and perform the appropriate action.
-       if msg.payload == b'ON':
-           GPIO.output(LED_PIN, GPIO.HIGH)
-       elif msg.payload == b'OFF':
-           GPIO.output(LED_PIN, GPIO.LOW)
-       elif msg.payload == b'TOGGLE':
-           GPIO.output(LED_PIN, not GPIO.input(LED_PIN))
+# def on_message(client, userdata, msg):
+   # print(msg.topic+" "+str(msg.payload))
+   # # Check if this is a message for the Pi LED.
+   # if msg.topic == '/leds/pi':
+       # # Look at the message data and perform the appropriate action.
+       # if msg.payload == b'ON':
+           # GPIO.output(LED_PIN, GPIO.HIGH)
+       # elif msg.payload == b'OFF':
+           # GPIO.output(LED_PIN, GPIO.LOW)
+       # elif msg.payload == b'TOGGLE':
+           # GPIO.output(LED_PIN, not GPIO.input(LED_PIN))
 
 
-def mqtt_setup():
-    global client
-    # Create MQTT client and connect to localhost, i.e. the Raspberry Pi running
-    # this script and the MQTT server.
-    client = mqtt.Client()
-    client.on_connect = on_connect
-    client.on_message = on_message
-    client.connect('localhost', 1883, 60)
-    # Connect to the MQTT server and process messages in a background thread.
-    client.loop_start()
-    # Main loop to listen for button presses.
-    print('Script is running, press Ctrl-C to quit...')
-    time.sleep(3)
+# def mqtt_setup():
+    # global client
+    # # Create MQTT client and connect to localhost, i.e. the Raspberry Pi running
+    # # this script and the MQTT server.
+    # client = mqtt.Client()
+    # client.on_connect = on_connect
+    # client.on_message = on_message
+    # client.connect('localhost', 1883, 60)
+    # # Connect to the MQTT server and process messages in a background thread.
+    # client.loop_start()
+    # # Main loop to listen for button presses.
+    # print('Script is running, press Ctrl-C to quit...')
+    # time.sleep(3)
 
 
-def mqtt_send(msg):
-   print(f"Sending message to esp8266: {msg}")
-   #client.publish('/leds/esp8266', 'TOGGLE')
-   client.publish('/leds/esp8266', msg)
+# def mqtt_send(msg):
+   # print(f"Sending message to esp8266: {msg}")
+   # #client.publish('/leds/esp8266', 'TOGGLE')
+   # client.publish('/leds/esp8266', msg)
 
 
 def checkDictionary(key):
@@ -198,7 +198,7 @@ def executeCommand(command):
         #print("successful !feed command... trying subprocess.call")
         #subprocess.call("/home/pi/Desktop/BirdFeeder/PythonScripts/StartFeedLoop.sh", shell=True)
         print("successful !feed command... trying to send mqtt message")
-        mqtt_send('RUNMOTOR')
+        #mqtt_send('RUNMOTOR')
 
 
 # msg in this case is a LiveChatMessage object defined in ytchat.py
@@ -317,10 +317,11 @@ def get_broadcastId(credential_file):
     credentials = storage.get()
     http = credentials.authorize(httplib2.Http())
     url = "https://www.googleapis.com/youtube/v3/liveBroadcasts?"
+    params = {'part': 'id', 'mine': 'true'}
     params = {'part': 'id', 'broadcastStatus': 'active'}
     params = urlencode(params)
     resp, data = my_json_request(http, url + params)
-    #print("request response: ")
+    print("request response: ")
     print(data)
     # The broadcastID is inside the list of broadcasts, which is in the 'items'
     return data['items'][0]['id']
@@ -331,11 +332,12 @@ def get_live_chat_id_for_stream_now(credential_file):
     credentials = storage.get()
     http = credentials.authorize(httplib2.Http())
     url = "https://www.googleapis.com/youtube/v3/liveBroadcasts?"
+    #params = {'part': 'snippet', 'mine': 'true'}
     params = {'part': 'snippet', 'broadcastStatus': 'active'}
     params = urlencode(params)
     resp, data = my_json_request(http, url + params)
-    #print("request response: ")
-    #print(data)
+    print("request response: ")
+    print(data)
     return data['items'][0]['snippet']['liveChatId']
 
 class YoutubeLiveChatError(Exception):
@@ -360,7 +362,7 @@ def fillGlobals():
     broadcastId = get_broadcastId(credential_file)
     print(f"broadcastId: {broadcastId}")
     #print(broadcastId)
-    broadcastId = "dDmkrZHiTgU"
+    #broadcastId = "dDmkrZHiTgU"
     pytchatObj = pytchat.create(video_id=broadcastId)
     #sys.exit(); #prevent too many API calls idk
 
@@ -368,7 +370,7 @@ def fillGlobals():
 def main():
     fillGlobals()  # Give values to global variables. Needs refactoring lol
 
-    mqtt_setup()  # Setup mqtt server
+    #mqtt_setup()  # Setup mqtt server
 
     # pytchat stuff #####
     print(f"Current feed Interval is {FEED_INTERVAL_TOTAL_SECONDS} seconds")

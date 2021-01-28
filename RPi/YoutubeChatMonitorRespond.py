@@ -320,7 +320,7 @@ def main():
             
             # Check if user used a command, and if it should feed
             #parseChat(c.datetime, c.author.name, c.message)
-            if (msg.author.name == "Patagonian Duck"): # Don't respond to myself
+            if (msg.author.name != "Patagonian Duck"): # Don't respond to myself
                 continue
             else:
                 respond(msg)
