@@ -93,6 +93,7 @@ def on_connect(client, userdata, flags, rc):
 # The callback for when a PUBLISH message is received from the server.
 
 
+
 def on_message(client, userdata, msg):
    print(msg.topic+" "+str(msg.payload))
    # Check if this is a message for the Pi LED.
@@ -336,6 +337,12 @@ def get_live_chat_id_for_stream_now(credential_file):
     #print(data)
     return data['items'][0]['snippet']['liveChatId']
 
+class YoutubeLiveChatError(Exception):
+
+    def __init__(self, message, code=None, errors=None):
+        Exception.__init__(self, message)
+        self.code = code
+        self.errors = errors
 
 def fillGlobals():
     global livechat_id
@@ -352,6 +359,7 @@ def fillGlobals():
     broadcastId = get_broadcastId(credential_file)
     print(f"broadcastId: {broadcastId}")
     #print(broadcastId)
+    broadcastId = "dDmkrZHiTgU"
     pytchatObj = pytchat.create(video_id=broadcastId)
     #sys.exit(); #prevent too many API calls idk
 
