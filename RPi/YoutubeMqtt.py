@@ -94,18 +94,22 @@ def on_connect(client, userdata, flags, rc):
 # The callback for when a PUBLISH message is received from the server.
 
 
-
+# Reacts to message received from client based on what bytes it receives in the payload
 def on_message(client, userdata, msg):
-   print(msg.topic+" "+str(msg.payload))
-   # Check if this is a message for the Pi LED.
-   if msg.topic == '/leds/pi':
-       # Look at the message data and perform the appropriate action.
-       if msg.payload == b'ON':
-           GPIO.output(LED_PIN, GPIO.HIGH)
-       elif msg.payload == b'OFF':
-           GPIO.output(LED_PIN, GPIO.LOW)
-       elif msg.payload == b'TOGGLE':
-           GPIO.output(LED_PIN, not GPIO.input(LED_PIN))
+    print(msg.topic+" "+str(msg.payload))
+    # Check if this is a message for the Pi LED.
+    if msg.topic == '/leds/pi':
+        # Look at the message data and perform the appropriate action.
+        #if msg.payload == b'NANO_RECEIVED':
+        #    GPIO.output(LED_PIN, GPIO.HIGH)
+        messageString = str(msg.payload.decode("utf-8"))
+        print(f"received message: {messageString}")
+        words = messageString.split()  # Split text on spaces
+        if words[0] == 'nano_received':
+            amount_received = words[1]
+            responseMessage = "Received %s $NANO, Thanks a lot! Feeding now..." % (amount_received)
+            send_chat(responseMessage)            
+            
 
 
 def mqtt_setup():

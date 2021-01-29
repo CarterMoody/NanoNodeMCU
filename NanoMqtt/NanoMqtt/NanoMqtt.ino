@@ -58,7 +58,8 @@
 #include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson
 #include <WebSocketsClient.h> // https://github.com/Links2004/arduinoWebSockets/tree/master/src
 #include "Adafruit_MQTT.h" 
-#include "Adafruit_MQTT_Client.h" 
+#include "Adafruit_MQTT_Client.h"
+#include <string.h>
 /************************* WiFi Access Point *********************************/ 
 #define WLAN_SSID       "MoodyManor" 
 #define WLAN_PASS        "Whitecars01!" 
@@ -391,6 +392,18 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
         printTimeStamp();
         Serial.print("Amount in NANO/Nano/Mnano: ");
         Serial.println(block_amount_Mnano);
+
+        char mqtt_message [50];
+		    //std::string mqtt_message = 'nano_received' + std::to_string(block_amount_Mnano);
+        sprintf(mqtt_message, "nano_received %f", block_amount_Mnano);
+		    //Serial.print("mqtt_message: ");
+		    Serial.println(mqtt_message);
+		    pi_led.publish(mqtt_message);
+
+        //String mqtt_message2 = "nano_received " + String(block_amount_Mnano);
+        //Serial.print("mqtt_message: ");
+        //Serial.println(mqtt_message2);
+        //pi_led.publish(mqtt_message2);
 
         // Check if Donation amount > minimumThreshold
         if (block_amount_raw.toInt() > minimum_threshold_Mnano)
