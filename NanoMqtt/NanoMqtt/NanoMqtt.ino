@@ -78,6 +78,7 @@
 const float minimum_threshold_Mnano = 0; // Global to be set to minimum required Mnano NANO donation before reacting
 int lastFeedHour = 0; // Global keeps track of last hour feed was dispensed
 int global_mqtt_retries = 3; // Global keeps track of how many time we will try the mqtt_check() procedure
+int MOTOR_RUN_TIME = 1000; // Global sets for how long motor is to turn in milliseconds
 /************ Global State ******************/ 
 // Create an ESP8266 WiFiClient class to connect to the MQTT server. 
 WiFiClient client;
@@ -94,7 +95,10 @@ Adafruit_MQTT_Subscribe esp8266_led = Adafruit_MQTT_Subscribe(&mqtt, MQTT_USERNA
 StaticJsonDocument<200> doc;
 StaticJsonDocument<1024> rx_doc;
 /*************************** NTP Stuff **************************************/
-const long utcOffsetInSeconds = 3600;
+const long utcOffstHours = -8; // Set this to your offset from UTC time. PST is UTC-8 for example so put -8
+const long utcOffsetInSeconds = 60 * 60 * utcOffstHours; // Calculated based off your offset specified in utcOffsetHours
+int FEEDING_HOURS[] = {7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}; // Set these to the hours you want to feed
+int FEEDING_HOURS_SIZE = sizeof FEEDING_HOURS / sizeof FEEDING_HOURS[0];
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
@@ -219,7 +223,7 @@ void mqtt_check(){
      }
      else if (strncmp(message, "RUNMOTOR", 8) == 0) {
        // Run those motors boiiiiii
-       runMotorClockWise(1000);
+       runMotorClockWise(MOTOR_RUN_TIME);
      }
    } 
  } 
@@ -408,7 +412,8 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
         // Check if Donation amount > minimumThreshold
         if (block_amount_raw.toInt() > minimum_threshold_Mnano)
         {
-            runMotorClockWise(1000);
+            runMotorClockWise(MOTOR_RUN_TIME);
+			updateHourlyFeed();
         }
     }
     break;
@@ -430,17 +435,39 @@ void webSocketEvent(WStype_t type, uint8_t *payload, size_t length)
     }
 }
 
+// updates lastFeedHour to currentHour
+void updateHourlyFeed()
+{
+	int currentHour = timeClient.getHours();
+	lastFeedHour = currentHour;	
+}
+
+bool isFeedHour(int currentHour)
+{
+	for (int i = 0; i < FEEDING_HOURS_SIZE; i++)
+	{
+		if (currentHour == FEEDING_HOURS[i])
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 // Compare current Hour to lastFeedHour, if different then feed
 void checkHourlyFeed()
 {
-    int currentHour = timeClient.getHours();
-    if (currentHour != lastFeedHour)
-    {
-        printTimeStamp();
-        Serial.println("Have not fed this hour");
-        runMotorClockWise(1000);
-        lastFeedHour = currentHour;
-    }
+	int currentHour = timeClient.getHours();
+	if ( isFeedHour(currentHour) )
+	{
+		if (currentHour != lastFeedHour)
+		{
+			printTimeStamp();
+			Serial.println("Have not fed this hour");
+			runMotorClockWise(MOTOR_RUN_TIME);
+			updateHourlyFeed();
+		}
+	}
 }
 
 void printTime()
