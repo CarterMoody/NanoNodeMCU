@@ -1,0 +1,9 @@
+#!/usr/bin/python
+from subprocess import Popen
+import sys
+
+filename = sys.argv[1]                  # Call this progrm by invoking: ./forever PYTHONPROGRAM.py
+while True:
+    print("\nStarting " + filename)
+    p = Popen("python " + filename, shell=True)
+    p.wait()                    # Waits for process "p" to die the re-loops
