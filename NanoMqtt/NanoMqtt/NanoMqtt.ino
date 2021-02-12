@@ -57,12 +57,12 @@
 #include <WiFiUdp.h>
 #include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson
 #include <WebSocketsClient.h> // https://github.com/Links2004/arduinoWebSockets/tree/master/src
-#include "Adafruit_MQTT.h" 
+#include "Adafruit_MQTT.h" // https://github.com/adafruit/Adafruit_MQTT_Library
 #include "Adafruit_MQTT_Client.h"
 #include <string.h>
 /************************* WiFi Access Point *********************************/ 
-#define WLAN_SSID       "MoodyManor" 
-#define WLAN_PASS        "Whitecars01!" 
+#define WLAN_SSID       "Simmons" 
+#define WLAN_PASS        "moonshine" 
 #define MQTT_SERVER      "192.168.1.118" // static ip address
 #define MQTT_PORT         1883                    
 #define MQTT_USERNAME    "" 
@@ -95,7 +95,7 @@ Adafruit_MQTT_Subscribe esp8266_led = Adafruit_MQTT_Subscribe(&mqtt, MQTT_USERNA
 StaticJsonDocument<200> doc;
 StaticJsonDocument<1024> rx_doc;
 /*************************** NTP Stuff **************************************/
-const long utcOffstHours = -8; // Set this to your offset from UTC time. PST is UTC-8 for example so put -8
+const long utcOffstHours = -7; // Set this to your offset from UTC time. PST is UTC-8 for example so put -8
 const long utcOffsetInSeconds = 60 * 60 * utcOffstHours; // Calculated based off your offset specified in utcOffsetHours
 int FEEDING_HOURS[] = {7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21}; // Set these to the hours you want to feed
 int FEEDING_HOURS_SIZE = sizeof FEEDING_HOURS / sizeof FEEDING_HOURS[0];
@@ -191,11 +191,11 @@ void loop() {
 void mqtt_check(){
  // Ensure the connection to the MQTT server is alive (this will make the first 
  // connection and automatically reconnect when disconnected).  See the MQTT_connect
- if (global_mqtt_retries != 0){
-   MQTT_connect();
- }
  if (! (mqtt.connected()) ){
-   Serial.println("mqtt not connected, returning");
+   // Serial.println("mqtt not connected, returning");
+   if (global_mqtt_retries != 0){
+     MQTT_connect();
+   }
    return;
  }
      
@@ -234,24 +234,27 @@ void mqtt_check(){
 void MQTT_connect() { 
  int8_t ret; 
  // Stop if already connected. 
- if (mqtt.connected()) { 
+ if (mqtt.connected()) {
+   //Serial.println("MQTT Connected!"); 
    return; 
  } 
  Serial.print("Connecting to MQTT... "); 
  uint8_t local_retries = 3; 
- while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected 
-      Serial.println(mqtt.connectErrorString(ret)); 
-      Serial.println("Retrying MQTT connection in 5 seconds..."); 
-      mqtt.disconnect(); 
-      delay(5000);  // wait 5 seconds 
-      local_retries--; 
-      if (local_retries == 0) { 
-        // basically die and wait for WDT to reset me 
-        //while (1);
-        global_mqtt_retries--;
-      } 
- } 
- Serial.println("MQTT Connected!"); 
+ while (local_retries > 0) {
+   if ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected 
+     Serial.println(mqtt.connectErrorString(ret)); 
+     Serial.println("Retrying MQTT connection in 5 seconds..."); 
+     mqtt.disconnect(); 
+     delay(5000);  // wait 5 seconds 
+     local_retries--; 
+   }
+   else {
+     Serial.println("MQTT Connected!");
+     return;  
+   }
+ }
+ global_mqtt_retries--; 
+ 
 }
 
 void bootMessage(){
