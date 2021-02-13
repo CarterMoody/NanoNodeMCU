@@ -267,6 +267,7 @@ def timestamp_from_datetime(dt):
 
 
 def updateDateTime():
+    print("updating date time")
     global CURRENT_DATE_TIME
     CURRENT_DATE_TIME = datetime.now(pytz.utc)
 
@@ -364,7 +365,7 @@ def fillGlobals():
     broadcastId = get_broadcastId(credential_file)
     print(f"broadcastId: {broadcastId}")
     #print(broadcastId)
-    broadcastId = "dDmkrZHiTgU"
+    #broadcastId = "Ww6QEItZtUs"
     pytchatObj = pytchat.create(video_id=broadcastId)
     #sys.exit(); #prevent too many API calls idk
 
@@ -384,21 +385,27 @@ def main():
         exit()
 
     while pytchatObj.is_alive():
-
+        #print("first step in while loop")
         for msg in pytchatObj.get().sync_items():
             print(f"{msg.datetime} {msg.author.name} {msg.message}")
             # for now, change msg.datetime to be current time in UTC
             updateDateTime()
+            #print("done syncing date time")
             msg.datetime = CURRENT_DATE_TIME
 
             # Check if user used a command, and if it should feed
             #parseChat(c.datetime, c.author.name, c.message)
             if (msg.author.name == my_channel_name):  # Don't respond to myself
+                print("Message is from myself, continue")
                 continue
             else:
                 respond(msg)
                 #text = "hello from carter pc"
                 #send_chat(text)
+        #print("done syncing messages")
+    if pytchatObj.is_alive():
+        print("still alive")
+    print("pytchatObj must no longer be alive, exiting")
 
 
 if __name__ == '__main__':
