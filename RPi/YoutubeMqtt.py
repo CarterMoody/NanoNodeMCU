@@ -199,8 +199,10 @@ def richCommand(command, msgAuthorName):
 
 def executeCommand(command):
     if (command == '!feed'):
+        updateDateTime()
         #print("successful !feed command... trying subprocess.call")
         #subprocess.call("/home/pi/Desktop/BirdFeeder/PythonScripts/StartFeedLoop.sh", shell=True)
+        print(CURRENT_DATE_TIME)
         print("successful !feed command... trying to send mqtt message")
         mqtt_send('RUNMOTOR')
 
