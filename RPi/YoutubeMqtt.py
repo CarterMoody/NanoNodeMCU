@@ -70,9 +70,12 @@ FEED_INTERVAL_TOTAL_SECONDS = FEED_INTERVAL_SECONDS \
 DAILY_USER_DICT = {}
 
 native_dt = datetime.now()  # Reset Time to Local.. Not sure if needed pls test
+print("printing native_dt")
+print(native_dt)
 
 # Get timezone/offset aware datetime
-CURRENT_DATE_TIME = datetime.now(pytz.utc)
+#CURRENT_DATE_TIME = datetime.now(pytz.utc)
+CURRENT_DATE_TIME = datetime.now()
 
 
 VALID_COMMANDS = ['!feed']
@@ -87,7 +90,7 @@ msg_instruction = "Remember, you can feed at any time by sending ANY amount of $
 
 
 def on_connect(client, userdata, flags, rc):
-   print("Connected with result code " + str(rc))
+   printBetter("Connected with result code " + str(rc))
    # Subscribing in on_connect() means that if we lose the connection and
    # reconnect then subscriptions will be renewed.
    client.subscribe("/leds/pi")
@@ -96,14 +99,14 @@ def on_connect(client, userdata, flags, rc):
 
 # Reacts to message received from client based on what bytes it receives in the payload
 def on_message(client, userdata, msg):
-    print(msg.topic+" "+str(msg.payload))
+    printBetter(msg.topic+" "+str(msg.payload))
     # Check if this is a message for the Pi LED.
     if msg.topic == '/leds/pi':
         # Look at the message data and perform the appropriate action.
         #if msg.payload == b'NANO_RECEIVED':
         #    GPIO.output(LED_PIN, GPIO.HIGH)
         messageString = str(msg.payload.decode("utf-8"))
-        print(f"received message: {messageString}")
+        printBetter(f"received message: {messageString}")
         words = messageString.split()  # Split text on spaces
         if words[0] == 'nano_received':
             amount_received = words[1]
@@ -123,12 +126,12 @@ def mqtt_setup():
     # Connect to the MQTT server and process messages in a background thread.
     client.loop_start()
     # Main loop to listen for button presses.
-    print('Script is running, press Ctrl-C to quit...')
+    printBetter('Script is running, press Ctrl-C to quit...')
     time.sleep(3)
 
 
 def mqtt_send(msg):
-   print(f"Sending message to esp8266: {msg}")
+   printBetter(f"Sending message to esp8266: {msg}")
    #client.publish('/leds/esp8266', 'TOGGLE')
    client.publish('/leds/esp8266', msg)
 
@@ -137,18 +140,18 @@ def checkDictionary(key):
     global DAILY_USER_DICT
 
     updateDateTime()
-    print(f"checking dictionary for {key}")
+    printBetter(f"checking dictionary for {key}")
     if key in DAILY_USER_DICT:
         # Check to see if they fed more than FEED_INTERVAL_MINUTES + FEED_INTERVAL_SECONDS ago
         timeUserLastFed = DAILY_USER_DICT.get(key)
-        print(f"{key} at time {timeUserLastFed}")
-        print(f"Current time is:")
-        print(CURRENT_DATE_TIME)
+        printBetter(f"{key} at time {timeUserLastFed}")
+        #printBetter(f"Current time is:")
+        #printBetter(CURRENT_DATE_TIME)
 
         return True
 
     else:
-        print(f"{key} not found in dictionary")
+        printBetter(f"{key} not found in dictionary")
         return False
 
 
@@ -168,17 +171,17 @@ def parseChatForCommands(msgText):
 def checkWaitedEnough(key, msgTime):
     timeUserLastFed = DAILY_USER_DICT.get(key)
     # Check difference between the Current time and timeUserLastFed
-    print(f"CURRENT_DATE_TIME: {CURRENT_DATE_TIME}")
-    print(f"timeUserLastFed: {timeUserLastFed}")
+    #printBetter(f"CURRENT_DATE_TIME: {CURRENT_DATE_TIME}")
+    printBetter(f"timeUserLastFed: {timeUserLastFed}")
 
     timediff = CURRENT_DATE_TIME - timeUserLastFed
 
-    print(f"Difference in time in days: {timediff.days}")
+    printBetter(f"Difference in time in days: {timediff.days}")
     timeDiffHoursCalculated = timediff.seconds / (60 * 60)
-    print(f"Difference in time in hours: {timeDiffHoursCalculated}")
+    printBetter(f"Difference in time in hours: {timeDiffHoursCalculated}")
     timeDiffMinutesCalculated = timediff.seconds / 60
-    print(f"Difference in time in  minutes: {timeDiffMinutesCalculated}")
-    print(f"Difference in time in seconds: {timediff.seconds}")
+    printBetter(f"Difference in time in  minutes: {timeDiffMinutesCalculated}")
+    printBetter(f"Difference in time in seconds: {timediff.seconds}")
 
     if (timediff.seconds >= FEED_INTERVAL_TOTAL_SECONDS):
         timeRemaining = 0
@@ -200,11 +203,14 @@ def richCommand(command, msgAuthorName):
 def executeCommand(command):
     if (command == '!feed'):
         updateDateTime()
-        #print("successful !feed command... trying subprocess.call")
+        #printBetter("successful !feed command... trying subprocess.call")
         #subprocess.call("/home/pi/Desktop/BirdFeeder/PythonScripts/StartFeedLoop.sh", shell=True)
-        print(CURRENT_DATE_TIME)
-        print("successful !feed command... trying to send mqtt message")
+        #printBetter(CURRENT_DATE_TIME)
+        printBetter("*** *** *** *** ***")
+        printBetter("successful !feed command... trying to send mqtt message")
         mqtt_send('RUNMOTOR')
+        printBetter("*** *** *** *** ***")
+        
 
 
 # msg in this case is a LiveChatMessage object defined in ytchat.py
@@ -214,7 +220,7 @@ def respond(msg):
     #msgTimeNaive = timestamp_from_datetime(msgTime)
     msgAuthorName = msg.author.name
     msgText = msg.message
-    print(f"NEW MESSAGE: {msgTime} | {msgAuthorName} | {msgText}")
+    printBetter(f"NEW MESSAGE: {msgTime} | {msgAuthorName} | {msgText}")
 
     # Check for presence of command
     commandsList = parseChatForCommands(msgText)
@@ -223,19 +229,19 @@ def respond(msg):
         for command in commandsList:
             # Build a key based on Author's Name and Command Used
             key = msgAuthorName + command
-            print(f"key: {key}")
+            printBetter(f"key: {key}")
             dictionaryFound = checkDictionary(key)
             if (dictionaryFound):
                 # Check if user has waited long enough to use this specific command
                 timeRemaining = checkWaitedEnough(key, msgTime)
                 if (timeRemaining == 0):
-                    print(
+                    printBetter(
                         f"User: {msgAuthorName} has waited long enough for the {command} command")
                     # update dictionary with new time for this key (user + command)
                     DAILY_USER_DICT[key] = msgTime
                     richCommand(command, msgAuthorName)
                 else:  # User has not waited long enough
-                    print(
+                    printBetter(
                         f"User: {msgAuthorName} needs to wait {timeRemaining} more seconds before using the {command} command")
                     responseMessage = "Sorry %s, you must wait %d seconds before using the %s command again :)" % (
                         msgAuthorName, timeRemaining, command)
@@ -244,15 +250,15 @@ def respond(msg):
 
             else:  # User + Command not found in dictionary
                 DAILY_USER_DICT[key] = msgTime  # Add entry for user
-                print("feeding now")
+                printBetter("feeding now")
                 richCommand(command, msgAuthorName)
 
     else:  # Do nothing, no command found
-        print("no command found")
+        printBetter("no command found")
 
-    print("PRINTING DICTIONARY")
-    print(DAILY_USER_DICT)
-    print("END DICTIONARY")
+    #printBetter("PRINTING DICTIONARY")
+    #print(DAILY_USER_DICT)
+    #print("END DICTIONARY")
 
     #print(msg)
     #msg.delete()
@@ -269,9 +275,10 @@ def timestamp_from_datetime(dt):
 
 
 def updateDateTime():
-    print("updating date time")
+    #print("updating date time")
     global CURRENT_DATE_TIME
-    CURRENT_DATE_TIME = datetime.now(pytz.utc)
+    #CURRENT_DATE_TIME = datetime.now(pytz.utc)
+    CURRENT_DATE_TIME = datetime.now()
 
 
 def build_chat_body(text):
@@ -328,7 +335,7 @@ def get_broadcastId(credential_file):
     params = urlencode(params)
     resp, data = my_json_request(http, url + params)
     #print("request response: ")
-    print(data)
+    printBetter(data)
     # The broadcastID is inside the list of broadcasts, which is in the 'items'
     return data['items'][0]['id']
 
@@ -351,6 +358,14 @@ class YoutubeLiveChatError(Exception):
         Exception.__init__(self, message)
         self.code = code
         self.errors = errors
+        
+        
+# Generic wrapper to print which prints messages nicely with timestamp
+def printBetter(String):
+    global CURRENT_DATE_TIME
+    updateDateTime()
+    #print("|{}:{}:{}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), end='', flush=True)
+    print("|{}:{}:{}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), flush=True)
 
 def fillGlobals():
     global livechat_id
@@ -358,14 +373,14 @@ def fillGlobals():
     global pytchatObj
 
     livechat_id = get_live_chat_id_for_stream_now(credential_file)
-    print(f"livechat_id: {livechat_id}")
+    printBetter(f"livechat_id: {livechat_id}")
     #print(livechat_id)
     #######################
 
     ### pytchat stuff ###
     # NEEDS TESTING ONCE QUOTA RESETS
     broadcastId = get_broadcastId(credential_file)
-    print(f"broadcastId: {broadcastId}")
+    printBetter(f"broadcastId: {broadcastId}")
     #print(broadcastId)
     #broadcastId = "Ww6QEItZtUs"
     pytchatObj = pytchat.create(video_id=broadcastId)
@@ -378,18 +393,18 @@ def main():
     mqtt_setup()  # Setup mqtt server
 
     # pytchat stuff #####
-    print(f"Current feed Interval is {FEED_INTERVAL_TOTAL_SECONDS} seconds")
+    printBetter(f"Current feed Interval is {FEED_INTERVAL_TOTAL_SECONDS} seconds")
     if pytchatObj.is_alive():
-        print(f"monitoring chat on videoid {broadcastId}")
+        printBetter(f"monitoring chat on videoid {broadcastId}")
     else:
-        print(
+        printBetter(
             f"chat not alive for {broadcastId} check the v=VIDEO_ID is correct")
         exit()
 
     while pytchatObj.is_alive():
-        #print("first step in while loop")
+        #printBetter("first step in while loop")
         for msg in pytchatObj.get().sync_items():
-            print(f"{msg.datetime} {msg.author.name} {msg.message}")
+            printBetter(f"{msg.datetime} {msg.author.name} {msg.message}")
             # for now, change msg.datetime to be current time in UTC
             updateDateTime()
             #print("done syncing date time")
@@ -397,17 +412,17 @@ def main():
 
             # Check if user used a command, and if it should feed
             #parseChat(c.datetime, c.author.name, c.message)
-            if (msg.author.name == my_channel_name):  # Don't respond to myself
-                print("Message is from myself, continue")
+            if (msg.author.name == my_channel_name) and ("test" not in msg.message):  # Don't respond to myself
+                printBetter("Message is from myself, continue")
                 continue
             else:
                 respond(msg)
                 #text = "hello from carter pc"
                 #send_chat(text)
-        #print("done syncing messages")
+        #printBetter("done syncing messages")
     if pytchatObj.is_alive():
-        print("still alive")
-    print("pytchatObj must no longer be alive, exiting")
+        printBetter("still alive")
+    printBetter("pytchatObj must no longer be alive, exiting")
 
 
 if __name__ == '__main__':
