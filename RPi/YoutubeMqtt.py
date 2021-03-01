@@ -35,6 +35,7 @@ else:
 #from youtubechat import YoutubeLiveChat, get_live_chat_id_for_stream_now, get_broadcastId
 
 # the name of the oauth credential file created by running the get_oauth_token.py in python-youtubechat
+# If you have trouble generating this file, try creating a garbage .json file first, which the program will edit.
 credential_file = "oauth_creds"
 
 global livechat_id
@@ -47,14 +48,16 @@ global pytchatObj
 #sys.exit(); #prevent too many API calls idk
 ### MQTT Stuff ######
 global client
-#####################
+##################### # USER PLEASE CHANGE/ALTER/ADD ############
 
 my_channel_name = "Patagonian Duck"
 
+VALID_COMMANDS = ['!feed']
 
-# USER PLEASE CHANGE #
+nano_receive_address = "nano_36zcuomrbm6mudwused38ptrofk43kmqphuprcxwxkomk647wgaq6ocsweyb"
+
 FEED_INTERVAL_SECONDS = 30  # Set this to amount of time before same user can
-#    feed again 0 for instant
+#                               feed again, 0 for instant
 FEED_INTERVAL_MINUTES = 0  # Set to 0 to turn off
 FEED_INTERVAL_HOURS = 0    # Set to 0 to turn off
 FEED_INTERVAL_DAYS = 0     # Set to 0 to turn off
@@ -62,13 +65,16 @@ FEED_INTERVAL_TOTAL_SECONDS = FEED_INTERVAL_SECONDS \
     + (FEED_INTERVAL_MINUTES * 60) \
     + (FEED_INTERVAL_HOURS * 60 * 60) \
     + (FEED_INTERVAL_DAYS * 60 * 60 * 24)
+#######################################################
 
 # This Dictionary is to be maintained of all users who have issued commands
 #       This will need to be expanded to allow for different timings on
 #       different commands
-# Key: UserName | Value: DateTimeObject representing time of last command
+# Key: String(msgAuthorName + command) | Value: DateTimeObject representing time of last command
 DAILY_USER_DICT = {}
 
+
+########### TIME ###########################
 native_dt = datetime.now()  # Reset Time to Local.. Not sure if needed pls test
 print("printing native_dt")
 print(native_dt)
@@ -78,13 +84,11 @@ print(native_dt)
 CURRENT_DATE_TIME = datetime.now()
 
 
-VALID_COMMANDS = ['!feed']
-
-nano_receive_address = "nano_1ae75uxbfmpdqreejgziwut1ufj7e9othf1efo1byfocsjuoe63rtdmo1fg4"
-
 #### Message Strings ####
 msg_instruction = "Remember, you can feed at any time by sending ANY amount of $NANO to %s" % (
     nano_receive_address)
+    
+    
 
 ########### MQTT ###########################
 
