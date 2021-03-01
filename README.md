@@ -11,7 +11,10 @@ Description of Folders/Files: (all of these monitor NTP server)
 
 2. NanoNodeMCU: Monitors Nano Network
 
-3. NodeMCU: Monitors mqtt server
+3. NodeMCU: Monitors MQTT Server as Client
+
+4. RPi: Contains files to be run on RPi
+  1. YoutubeMQTT.py : Hosts MQTT Server and Monitors YouTube Live Chat
 
 
 # Instructions: https://docs.google.com/document/d/11qHZTV_VtY0-6eIIvyDKzXHq9InnWSXJNmRCBqyEh5M/edit?usp=sharing
