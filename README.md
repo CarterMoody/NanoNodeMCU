@@ -15,19 +15,3 @@ Description of Folders/Files: (all of these monitor NTP server)
 
 
 # Instructions: https://docs.google.com/document/d/11qHZTV_VtY0-6eIIvyDKzXHq9InnWSXJNmRCBqyEh5M/edit?usp=sharing
-
-
-Materials (Cost in USD):
-
-$5 NodeMCU Development Board (Has ESP 8266 attached)
-
-$2 L298N Motor Driver (Could use any motor driver really, recommended is a newer mofset one)
-
-$5 12V DC Motor
-
-$? 12V Power Supply
-
-$10 22AWG Wires
-
-$2 18 Gauge wires for power and ground
-
