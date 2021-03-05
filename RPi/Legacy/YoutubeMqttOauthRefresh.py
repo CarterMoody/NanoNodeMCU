@@ -6,9 +6,6 @@ import pickle
 # Google's Request
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
-import google_auth_oauthlib.flow
-import googleapiclient.discovery
-import googleapiclient.errors
 ## End new imports
 
 from enum import Enum  # Used for custom command Types from Youtube
@@ -39,23 +36,16 @@ else:
 ##### New Credential Logic #####
 credentials = None
 http_auth = None
-youtubeAPI = None
 # Edit to allow more access to the app
 scopes=['https://www.googleapis.com/auth/youtube', 
         'https://www.googleapis.com/auth/youtube.force-ssl']
         
 
 
-def build_youtubeAPI_object():
-    global youtubeAPI
-    youtubeAPI = googleapiclient.discovery.build(
-        "youtube", "v3", credentials=credentials)
-
 # Checks credentials. Tries to load from previous use, then checks them.
 def check_credentials():
     try_load_credentials()
     update_credentials()
-    build_youtubeAPI_object()
 
 # Tries to load in previously stored credentials
 # token.pickle stores the user's credentials from previously successful logins
@@ -85,6 +75,8 @@ def update_credentials():
             flow.run_local_server(port=8080, prompt='consent',
                                   authorization_prompt_message='')
             credentials = flow.credentials
+            print("http_auth attempt")
+            http_auth = credentials.authorize(httplib2.Http())
 
             # Save the credentials for the next run
             with open('token.pickle', 'wb') as f:
@@ -354,50 +346,8 @@ def build_chat_body(text):
     jsondump = dumps(message)
     return jsondump
 
+
 def send_chat(text):
-    #print("send_chat: " + text)
-    request = youtubeAPI.liveChatMessages().insert(
-        part="snippet",
-        body={
-          "snippet": {
-            "liveChatId": livechat_id,
-            "type": "textMessageEvent",
-            "textMessageDetails": {
-              "messageText": text
-            }
-          }
-        }
-    )
-    response = request.execute()
-
-    #print(response)    
-    
-def get_broadcastId():
-    #print("get_broadcastId")
-    request = youtubeAPI.liveBroadcasts().list(
-        part="id",
-        broadcastStatus="active"
-    )
-    response = request.execute()
-    
-    #print(response)
-    
-    return response['items'][0]['id']
-    
-    
-def get_live_chat_id_for_stream_now():
-    #print("get_live_chat_id_for_stream_now")
-    request = youtubeAPI.liveBroadcasts().list(
-        part="snippet",
-        broadcastStatus="active"
-    )
-    response = request.execute()
-    
-    #print(response)
-    
-    return response['items'][0]['snippet']['liveChatId']
-
-def send_chat_old(text):
     #storage = Storage(credential_file)
     #credentials = storage.get()
     check_credentials()
@@ -427,7 +377,7 @@ def my_json_request(http, url, method='GET', headers=None, body=None):
     return resp, data
 
 
-def get_broadcastId_old(credentials):
+def get_broadcastId(credentials):
     # making this call: https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list
     #storage = Storage(credential_file)
     #credentials = storage.get()
@@ -443,7 +393,7 @@ def get_broadcastId_old(credentials):
     return data['items'][0]['id']
 
 
-def get_live_chat_id_for_stream_now_old(credentials):
+def get_live_chat_id_for_stream_now(credentials):
     #storage = Storage(credential_file)
     #credentials = storage.get()
     check_credentials()
@@ -476,16 +426,14 @@ def fillGlobals():
     global broadcastId
     global pytchatObj
 
-    #livechat_id = get_live_chat_id_for_stream_now(credentials)
-    livechat_id = get_live_chat_id_for_stream_now()
+    livechat_id = get_live_chat_id_for_stream_now(credentials)
     printBetter(f"livechat_id: {livechat_id}")
     #print(livechat_id)
     #######################
 
     ### pytchat stuff ###
     # NEEDS TESTING ONCE QUOTA RESETS
-    #broadcastId = get_broadcastId(credentials)
-    broadcastId = get_broadcastId()
+    broadcastId = get_broadcastId(credentials)
     printBetter(f"broadcastId: {broadcastId}")
     #print(broadcastId)
     #broadcastId = "Ww6QEItZtUs"
@@ -520,8 +468,7 @@ def main():
     while pytchatObj.is_alive():
         #printBetter("first step in while loop")
         for msg in pytchatObj.get().sync_items():
-            #printBetter(f"NEW MESSAGE: {msg.datetime} {msg.author.name} {msg.message}")
-            printBetter(f" NEW MESSAGE: {msg.author.name}: {msg.message}")
+            printBetter(f"{msg.datetime} {msg.author.name} {msg.message}")
             # for now, change msg.datetime to be current time in UTC
             updateDateTime()
             #print("done syncing date time")

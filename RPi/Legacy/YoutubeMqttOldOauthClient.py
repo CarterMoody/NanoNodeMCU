@@ -1,16 +1,5 @@
 #!/usr/bin/env python
 
-# Imports required from https://www.youtube.com/watch?v=vQQEaSnQ_bs
-import os
-import pickle
-# Google's Request
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
-import google_auth_oauthlib.flow
-import googleapiclient.discovery
-import googleapiclient.errors
-## End new imports
-
 from enum import Enum  # Used for custom command Types from Youtube
 import subprocess
 import pytchat
@@ -33,65 +22,22 @@ if PY3:
 else:
     from Queue import Queue
     from urllib import urlencode
-    
 
+# Implementing blend with pytchat to prevent API quota limit
+#video_id="8-oLIczRmaE" # pytchat used to use this but now we can get it with an api call in ytchat.py
+# Trying to replace above line with call to youtube API to get Broadcast ID
+#chat = pytchat.create(video_id="8-oLIczRmaE") Copied below in ### pytchat stuff ###
 
-##### New Credential Logic #####
-credentials = None
-http_auth = None
-youtubeAPI = None
-# Edit to allow more access to the app
-scopes=['https://www.googleapis.com/auth/youtube', 
-        'https://www.googleapis.com/auth/youtube.force-ssl']
-        
+# allow shell execution of scripts launched from this file
 
+## LiveChatID: 
 
-def build_youtubeAPI_object():
-    global youtubeAPI
-    youtubeAPI = googleapiclient.discovery.build(
-        "youtube", "v3", credentials=credentials)
+### ytchat.py stuff ###
+#from youtubechat import YoutubeLiveChat, get_live_chat_id_for_stream_now, get_broadcastId
 
-# Checks credentials. Tries to load from previous use, then checks them.
-def check_credentials():
-    try_load_credentials()
-    update_credentials()
-    build_youtubeAPI_object()
-
-# Tries to load in previously stored credentials
-# token.pickle stores the user's credentials from previously successful logins
-def try_load_credentials():
-    global credentials
-    if os.path.exists('token.pickle'):
-        print('Loading Credentials From File...')
-        with open('token.pickle', 'rb') as token:
-            credentials = pickle.load(token)
-
-# If there are no valid credentials available, then either refresh the token or log in.
-#      Either way, creates/updates a file (token.pickle) with good credentials
-def update_credentials():
-    global credentials
-    global http_auth
-    if not credentials or not credentials.valid:
-        if credentials and credentials.expired and credentials.refresh_token:
-            print('Refreshing Access Token...')
-            credentials.refresh(Request())
-        else:
-            print('Fetching New Tokens...')
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'client_secrets.json',
-                scopes
-            )
-
-            flow.run_local_server(port=8080, prompt='consent',
-                                  authorization_prompt_message='')
-            credentials = flow.credentials
-
-            # Save the credentials for the next run
-            with open('token.pickle', 'wb') as f:
-                print('Saving Credentials for Future Use...')
-                pickle.dump(credentials, f)
-##### End New Credential Logic #####
-        
+# the name of the oauth credential file created by running the get_oauth_token.py in python-youtubechat
+# If you have trouble generating this file, try creating a garbage .json file first, which the program will edit.
+credential_file = "oauth_creds"
 
 global livechat_id
 global chat_obj
@@ -354,53 +300,10 @@ def build_chat_body(text):
     jsondump = dumps(message)
     return jsondump
 
+
 def send_chat(text):
-    #print("send_chat: " + text)
-    request = youtubeAPI.liveChatMessages().insert(
-        part="snippet",
-        body={
-          "snippet": {
-            "liveChatId": livechat_id,
-            "type": "textMessageEvent",
-            "textMessageDetails": {
-              "messageText": text
-            }
-          }
-        }
-    )
-    response = request.execute()
-
-    #print(response)    
-    
-def get_broadcastId():
-    #print("get_broadcastId")
-    request = youtubeAPI.liveBroadcasts().list(
-        part="id",
-        broadcastStatus="active"
-    )
-    response = request.execute()
-    
-    #print(response)
-    
-    return response['items'][0]['id']
-    
-    
-def get_live_chat_id_for_stream_now():
-    #print("get_live_chat_id_for_stream_now")
-    request = youtubeAPI.liveBroadcasts().list(
-        part="snippet",
-        broadcastStatus="active"
-    )
-    response = request.execute()
-    
-    #print(response)
-    
-    return response['items'][0]['snippet']['liveChatId']
-
-def send_chat_old(text):
-    #storage = Storage(credential_file)
-    #credentials = storage.get()
-    check_credentials()
+    storage = Storage(credential_file)
+    credentials = storage.get()
     body = build_chat_body(text)
     url = 'https://www.googleapis.com/youtube/v3/liveChat/messages'
     url = url + '?part=snippet'
@@ -427,11 +330,10 @@ def my_json_request(http, url, method='GET', headers=None, body=None):
     return resp, data
 
 
-def get_broadcastId_old(credentials):
+def get_broadcastId(credential_file):
     # making this call: https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list
-    #storage = Storage(credential_file)
-    #credentials = storage.get()
-    check_credentials()
+    storage = Storage(credential_file)
+    credentials = storage.get()
     http = credentials.authorize(httplib2.Http())
     url = "https://www.googleapis.com/youtube/v3/liveBroadcasts?"
     params = {'part': 'id', 'broadcastStatus': 'active'}
@@ -443,11 +345,12 @@ def get_broadcastId_old(credentials):
     return data['items'][0]['id']
 
 
-def get_live_chat_id_for_stream_now_old(credentials):
-    #storage = Storage(credential_file)
-    #credentials = storage.get()
-    check_credentials()
+def get_live_chat_id_for_stream_now(credential_file):
+    storage = Storage(credential_file)
+    credentials = storage.get()
     http = credentials.authorize(httplib2.Http())
+    print("http content:")
+    print(http)
     url = "https://www.googleapis.com/youtube/v3/liveBroadcasts?"
     params = {'part': 'snippet', 'broadcastStatus': 'active'}
     params = urlencode(params)
@@ -476,37 +379,25 @@ def fillGlobals():
     global broadcastId
     global pytchatObj
 
-    #livechat_id = get_live_chat_id_for_stream_now(credentials)
-    livechat_id = get_live_chat_id_for_stream_now()
+    livechat_id = get_live_chat_id_for_stream_now(credential_file)
     printBetter(f"livechat_id: {livechat_id}")
     #print(livechat_id)
     #######################
 
     ### pytchat stuff ###
     # NEEDS TESTING ONCE QUOTA RESETS
-    #broadcastId = get_broadcastId(credentials)
-    broadcastId = get_broadcastId()
+    broadcastId = get_broadcastId(credential_file)
     printBetter(f"broadcastId: {broadcastId}")
     #print(broadcastId)
     #broadcastId = "Ww6QEItZtUs"
     pytchatObj = pytchat.create(video_id=broadcastId)
     #sys.exit(); #prevent too many API calls idk
-    
-    
-
 
 
 def main():
-    print("trying to get new credentials")
-    print("make sure you have a client_secrets.json")
-    check_credentials()
-    
     fillGlobals()  # Give values to global variables. Needs refactoring lol
 
     mqtt_setup()  # Setup mqtt server
-    
-
-    
 
     # pytchat stuff #####
     printBetter(f"Current feed Interval is {FEED_INTERVAL_TOTAL_SECONDS} seconds")
@@ -520,8 +411,7 @@ def main():
     while pytchatObj.is_alive():
         #printBetter("first step in while loop")
         for msg in pytchatObj.get().sync_items():
-            #printBetter(f"NEW MESSAGE: {msg.datetime} {msg.author.name} {msg.message}")
-            printBetter(f" NEW MESSAGE: {msg.author.name}: {msg.message}")
+            printBetter(f"{msg.datetime} {msg.author.name} {msg.message}")
             # for now, change msg.datetime to be current time in UTC
             updateDateTime()
             #print("done syncing date time")

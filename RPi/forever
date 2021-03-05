@@ -3,7 +3,11 @@ from subprocess import Popen
 import sys
 
 filename = sys.argv[1]                  # Call this progrm by invoking: ./forever PYTHONPROGRAM.py
+
+processStartCount = 0
 while True:
+    print("\n\nThis is loop number: " + str(processStartCount) )
     print("\nStarting " + filename)
     p = Popen("python " + filename, shell=True)
     p.wait()                    # Waits for process "p" to die the re-loops
+    processStartCount = processStartCount+1
