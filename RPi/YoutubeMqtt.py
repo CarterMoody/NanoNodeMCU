@@ -38,13 +38,11 @@ else:
 
 ##### New Credential Logic #####
 credentials = None
-http_auth = None
 youtubeAPI = None
 # Edit to allow more access to the app
 scopes=['https://www.googleapis.com/auth/youtube', 
         'https://www.googleapis.com/auth/youtube.force-ssl']
         
-
 
 def build_youtubeAPI_object():
     global youtubeAPI
@@ -53,6 +51,8 @@ def build_youtubeAPI_object():
 
 # Checks credentials. Tries to load from previous use, then checks them.
 def check_credentials():
+    printBetter("checking credentials")
+    #printBetter("make sure you have a client_secrets.json")
     try_load_credentials()
     update_credentials()
     build_youtubeAPI_object()
@@ -62,21 +62,22 @@ def check_credentials():
 def try_load_credentials():
     global credentials
     if os.path.exists('token.pickle'):
-        print('Loading Credentials From File...')
+        printBetter('Loading Credentials From File...')
         with open('token.pickle', 'rb') as token:
             credentials = pickle.load(token)
+    else
+        printBetter("credentials file: 'token.pickle' not found")
 
 # If there are no valid credentials available, then either refresh the token or log in.
 #      Either way, creates/updates a file (token.pickle) with good credentials
 def update_credentials():
     global credentials
-    global http_auth
     if not credentials or not credentials.valid:
         if credentials and credentials.expired and credentials.refresh_token:
-            print('Refreshing Access Token...')
+            printBetter('Refreshing Access Token...')
             credentials.refresh(Request())
         else:
-            print('Fetching New Tokens...')
+            printBetter('Fetching New Tokens...')
             flow = InstalledAppFlow.from_client_secrets_file(
                 'client_secrets.json',
                 scopes
@@ -88,7 +89,7 @@ def update_credentials():
 
             # Save the credentials for the next run
             with open('token.pickle', 'wb') as f:
-                print('Saving Credentials for Future Use...')
+                printBetter('Saving Credentials for Future Use...')
                 pickle.dump(credentials, f)
 ##### End New Credential Logic #####
         
@@ -131,8 +132,8 @@ DAILY_USER_DICT = {}
 
 ########### TIME ###########################
 native_dt = datetime.now()  # Reset Time to Local.. Not sure if needed pls test
-print("printing native_dt")
-print(native_dt)
+printBetter("printing native_dt")
+printBetter(native_dt)
 
 # Get timezone/offset aware datetime
 #CURRENT_DATE_TIME = datetime.now(pytz.utc)
@@ -275,11 +276,8 @@ def executeCommand(command):
 # msg in this case is a LiveChatMessage object defined in ytchat.py
 def respond(msg):
     msgTime = msg.datetime
-    # Strip off TimeZone needed for comparison later
-    #msgTimeNaive = timestamp_from_datetime(msgTime)
     msgAuthorName = msg.author.name
     msgText = msg.message
-    printBetter(f"NEW MESSAGE: {msgTime} | {msgAuthorName} | {msgText}")
 
     # Check for presence of command
     commandsList = parseChatForCommands(msgText)
@@ -312,23 +310,19 @@ def respond(msg):
                 printBetter("feeding now")
                 richCommand(command, msgAuthorName)
 
-    else:  # Do nothing, no command found
+    else:  # Do nothing, no command found because commandsList is empty
         printBetter("no command found")
 
     #printBetter("PRINTING DICTIONARY")
     #print(DAILY_USER_DICT)
     #print("END DICTIONARY")
-
     #print(msg)
-    #msg.delete()
-    #chat_obj.send_message("RESPONSE!", chatid)
+
 
 
 # May be useful for converting datetimes Not used currently
 def datetime_from_timestamp(ts):
     return datetime.fromtimestamp(ts, pytz.utc).replace(tzinfo=None)
-
-
 def timestamp_from_datetime(dt):
     return dt.replace(tzinfo=pytz.utc).timestamp()
 
@@ -340,6 +334,8 @@ def updateDateTime():
     CURRENT_DATE_TIME = datetime.now()
 
 
+# Send Chat VIA YouTubeAPI
+# https://developers.google.com/youtube/v3/live/docs/liveChatMessages/insert?apix=true
 def send_chat(text):
     #print("send_chat: " + text)
     request = youtubeAPI.liveChatMessages().insert(
@@ -355,9 +351,13 @@ def send_chat(text):
         }
     )
     response = request.execute()
-
     #print(response)    
-    
+
+
+# Get BroadcastID VIA YouTubeAPI
+#   The BroadcastID is the short alphanumeric code which identifies the video
+#   and appears in the url of the video
+# https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list
 def get_broadcastId():
     #print("get_broadcastId")
     request = youtubeAPI.liveBroadcasts().list(
@@ -367,11 +367,14 @@ def get_broadcastId():
     response = request.execute()
     
     #print(response)
-    
     return response['items'][0]['id']
     
     
-# Returns YouTube LiveChatID. This is different from the VideoID
+# Returns YouTube LiveChatID. This is different from the BroadcastID because:
+#    It identifies the current chat attached to the BroadcastID
+#    I'm not sure how often, but it is subject to change while the BroadcastID
+#    remains the same.
+# # https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list
 def get_live_chat_id_for_stream_now():
     #print("get_live_chat_id_for_stream_now")
     request = youtubeAPI.liveBroadcasts().list(
@@ -381,17 +384,8 @@ def get_live_chat_id_for_stream_now():
     response = request.execute()
     
     #print(response)
-    
     return response['items'][0]['snippet']['liveChatId']
 
-
-
-class YoutubeLiveChatError(Exception):
-
-    def __init__(self, message, code=None, errors=None):
-        Exception.__init__(self, message)
-        self.code = code
-        self.errors = errors
         
         
 # Generic wrapper to print which prints messages nicely with timestamp
@@ -410,25 +404,15 @@ def fillGlobals():
     livechat_id = get_live_chat_id_for_stream_now()
     printBetter(f"livechat_id: {livechat_id}")
     #print(livechat_id)
-    #######################
 
-    ### pytchat stuff ###
-    # NEEDS TESTING ONCE QUOTA RESETS
-    #broadcastId = get_broadcastId(credentials)
     broadcastId = get_broadcastId()
     printBetter(f"broadcastId: {broadcastId}")
     #print(broadcastId)
-    #broadcastId = "Ww6QEItZtUs"
     pytchatObj = pytchat.create(video_id=broadcastId)
-    #sys.exit(); #prevent too many API calls idk
     
     
-
-
 
 def main():
-    print("trying to get new credentials")
-    print("make sure you have a client_secrets.json")
     check_credentials()
     
     fillGlobals()  # Give values to global variables. Needs refactoring lol
@@ -448,28 +432,25 @@ def main():
         exit()
 
     while pytchatObj.is_alive():
-        #printBetter("first step in while loop")
         for msg in pytchatObj.get().sync_items():
             #printBetter(f"NEW MESSAGE: {msg.datetime} {msg.author.name} {msg.message}")
-            printBetter(f" NEW MESSAGE: {msg.author.name}: {msg.message}")
-            # for now, change msg.datetime to be current time in UTC
+            printBetter(f" NEW MESSAGE: {msg.datetime} | {msg.author.name} | {msg.message}")
+            
+            # This should ensure datetime of the message is in your current timezone, but will overwrite actual message time
             updateDateTime()
-            #print("done syncing date time")
             msg.datetime = CURRENT_DATE_TIME
 
             # Check if user used a command, and if it should feed
-            #parseChat(c.datetime, c.author.name, c.message)
             if (msg.author.name == my_channel_name) and ("test" not in msg.message):  # Don't respond to myself
                 printBetter("Message is from myself, continue")
                 continue
             else:
                 respond(msg)
-                #text = "hello from carter pc"
-                #send_chat(text)
-        #printBetter("done syncing messages")
+
     if pytchatObj.is_alive():
         printBetter("still alive")
-    printBetter("pytchatObj must no longer be alive, exiting")
+    printBetter("pytchatObj must no longer be alive, exiting.")
+    printBetter("    Try to run this script with 'forever' script to keep alive")
 
 
 if __name__ == '__main__':
