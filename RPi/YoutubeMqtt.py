@@ -340,20 +340,6 @@ def updateDateTime():
     CURRENT_DATE_TIME = datetime.now()
 
 
-def build_chat_body(text):
-    message = {
-        u'snippet': {
-            u'liveChatId': livechat_id,
-            "textMessageDetails": {
-                "messageText": text
-            },
-            "type": "textMessageEvent"
-        }
-    }
-
-    jsondump = dumps(message)
-    return jsondump
-
 def send_chat(text):
     #print("send_chat: " + text)
     request = youtubeAPI.liveChatMessages().insert(
@@ -385,6 +371,7 @@ def get_broadcastId():
     return response['items'][0]['id']
     
     
+# Returns YouTube LiveChatID. This is different from the VideoID
 def get_live_chat_id_for_stream_now():
     #print("get_live_chat_id_for_stream_now")
     request = youtubeAPI.liveBroadcasts().list(
@@ -397,64 +384,7 @@ def get_live_chat_id_for_stream_now():
     
     return response['items'][0]['snippet']['liveChatId']
 
-def send_chat_old(text):
-    #storage = Storage(credential_file)
-    #credentials = storage.get()
-    check_credentials()
-    body = build_chat_body(text)
-    url = 'https://www.googleapis.com/youtube/v3/liveChat/messages'
-    url = url + '?part=snippet'
-    http = credentials.authorize(httplib2.Http())
-    resp, data = my_json_request(http,
-                                 url,
-                                 'POST',
-                                 headers={
-                                     'Content-Type': 'application/json; charset=UTF-8'},
-                                 body=body)
-    return data
 
-
-def my_json_request(http, url, method='GET', headers=None, body=None):
-    resp, content = http.request(url, method, headers=headers, body=body)
-    content_type, content_type_params = cgi.parse_header(
-        resp.get('content-type', 'application/json; charset=UTF-8'))
-    charset = content_type_params.get('charset', 'UTF-8')
-    data = loads(content.decode(charset))
-    if 'error' in data:
-        error = data['error']
-        raise YoutubeLiveChatError(
-            error['message'], error.get('code'), error.get('errors'))
-    return resp, data
-
-
-def get_broadcastId_old(credentials):
-    # making this call: https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list
-    #storage = Storage(credential_file)
-    #credentials = storage.get()
-    check_credentials()
-    http = credentials.authorize(httplib2.Http())
-    url = "https://www.googleapis.com/youtube/v3/liveBroadcasts?"
-    params = {'part': 'id', 'broadcastStatus': 'active'}
-    params = urlencode(params)
-    resp, data = my_json_request(http, url + params)
-    #print("request response: ")
-    printBetter(data)
-    # The broadcastID is inside the list of broadcasts, which is in the 'items'
-    return data['items'][0]['id']
-
-
-def get_live_chat_id_for_stream_now_old(credentials):
-    #storage = Storage(credential_file)
-    #credentials = storage.get()
-    check_credentials()
-    http = credentials.authorize(httplib2.Http())
-    url = "https://www.googleapis.com/youtube/v3/liveBroadcasts?"
-    params = {'part': 'snippet', 'broadcastStatus': 'active'}
-    params = urlencode(params)
-    resp, data = my_json_request(http, url + params)
-    #print("request response: ")
-    #print(data)
-    return data['items'][0]['snippet']['liveChatId']
 
 class YoutubeLiveChatError(Exception):
 
