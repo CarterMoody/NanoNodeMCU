@@ -503,8 +503,8 @@ async def websocket_setup_listen(): #Connect to websocket. Subscribe and listen 
 # Adapted from here: https://github.com/taizan-hokuto/pytchat/wiki/LiveChatAsync
 # callback function is automatically called periodically
 async def pytchat_check(chatdata):
-    while pytchatObj.is_alive():
-        for msg in pytchatObj.get().sync_items():
+    print("in pytchat_check")
+    for msg in chatdata.items:
         #printBetter(f"NEW MESSAGE: {msg.datetime} {msg.author.name} {msg.message}")
         printBetter(f" NEW MESSAGE: {msg.datetime} | {msg.author.name} | {msg.message}")
         
@@ -518,9 +518,7 @@ async def pytchat_check(chatdata):
             continue
         else:
             respond(msg)
-        #await chatdata.tick_async()
-        await asyncio.sleep(2)
-
+        await chatdata.tick_async()
 
 
 async def main_async():
@@ -530,6 +528,17 @@ async def main_async():
         #await asyncio.sleep(1)
         #print("pytchatObjAsync is alive!")
         await websocket_setup_listen()
+        
+        
+    print("pytchatObjAsync is NOT alive!")
+    # If you want to check the reason for the termination, 
+    # you can use `raise_for_status()` function.
+    try:
+      pytchatObjAsync.raise_for_status()
+    except pytchat.ChatDataFinished:
+      print("Chat data finished.")
+    except Exception as e:
+      print(type(e), str(e))
 
     
     
@@ -538,12 +547,7 @@ if __name__ == "__main__":
     fillGlobals()  # Give values to global variables. Needs refactoring lol
     mqtt_setup()  # Setup mqtt server
     websocket_initial_setup()
-    
-    # New Async stuff from https://stackoverflow.com/questions/31623194/asyncio-two-loops-for-different-i-o-tasks
     try:
-        loop = asyncio.get_event_loop()
-        loop.create_task(pytcheck())
-        loop.create_task(websocket_setup_listen())
-    finally:
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
+        asyncio.run(main_async())
+    except KeyboardInterrupt: #if you CTRL + C it quits.
+        pass
