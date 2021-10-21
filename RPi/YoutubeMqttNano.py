@@ -520,7 +520,7 @@ async def pytchat_check():
             else:
                 respond(msg)
             #await chatdata.tick_async()
-            await asyncio.sleep(1)
+        await asyncio.sleep(1)
 
     
     
@@ -534,8 +534,11 @@ if __name__ == "__main__":
     try:
         loop = asyncio.get_event_loop()
         loop.create_task(pytchat_check())
-        loop.create_task(websocket_setup_listen())
-        loop.run_forever()
+        #loop.create_task(websocket_setup_listen())
+        
+        loop.run_until_complete(websocket_setup_listen())
+        #loop.run_forever(pytchat_check())
+        #loop.run_forever()
     finally:
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
