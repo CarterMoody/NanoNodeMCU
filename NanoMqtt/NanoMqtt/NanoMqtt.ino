@@ -63,7 +63,7 @@
 /************************* WiFi Access Point *********************************/ 
 #define WLAN_SSID       "Moody" 
 #define WLAN_PASS        "freewalter" 
-#define MQTT_SERVER      "192.168.1.118" // static ip address of the Raspberry Pi MQTT Server
+#define MQTT_SERVER      "192.168.1.143" // static ip address of the Raspberry Pi MQTT Server
 #define MQTT_PORT         1883                    
 #define MQTT_USERNAME    "" 
 #define MQTT_PASSWORD         ""
