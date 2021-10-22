@@ -470,7 +470,6 @@ def websocket_initial_setup(): # Used to be run globally
 
 async def websocket_setup_listen(): #Connect to websocket. Subscribe and listen for transactions.
     global websocket
-    print("doing the websocket thing")
     async with websockets.connect(activeNode, ssl=ssl_context) as websocket:
         print(f"Connected to websocket: {activeNode}\nSending subscription to websocket.")
         await websocket.send('{"action": "subscribe","topic": "confirmation","options":{"accounts": ["' + nano_receive_address + '"]}}') #F strings don't work :(
@@ -503,24 +502,43 @@ async def websocket_setup_listen(): #Connect to websocket. Subscribe and listen 
 
 # Adapted from here: https://github.com/taizan-hokuto/pytchat/wiki/LiveChatAsync
 # callback function is automatically called periodically
-async def pytchat_check():
-    while pytchatObj.is_alive():
-        for msg in pytchatObj.get().sync_items():
-            #printBetter(f"NEW MESSAGE: {msg.datetime} {msg.author.name} {msg.message}")
-            printBetter(f" NEW MESSAGE: {msg.datetime} | {msg.author.name} | {msg.message}")
-            
-            # This should ensure datetime of the message is in your current timezone, but will overwrite actual message time
-            updateDateTime()
-            msg.datetime = CURRENT_DATE_TIME
+async def pytchat_check(chatdata):
+    print("in pytchat_check")
+    for msg in chatdata.items:
+        #printBetter(f"NEW MESSAGE: {msg.datetime} {msg.author.name} {msg.message}")
+        printBetter(f" NEW MESSAGE: {msg.datetime} | {msg.author.name} | {msg.message}")
+        
+        # This should ensure datetime of the message is in your current timezone, but will overwrite actual message time
+        updateDateTime()
+        msg.datetime = CURRENT_DATE_TIME
 
-            # Check if user used a command, and if it should feed
-            if (msg.author.name == my_channel_name) and ("test" not in msg.message):  # Don't respond to myself
-                printBetter("Message is from myself, continue")
-                continue
-            else:
-                respond(msg)
-            #await chatdata.tick_async()
-        await asyncio.sleep(1)
+        # Check if user used a command, and if it should feed
+        if (msg.author.name == my_channel_name) and ("test" not in msg.message):  # Don't respond to myself
+            printBetter("Message is from myself, continue")
+            continue
+        else:
+            respond(msg)
+        await chatdata.tick_async()
+
+
+async def main_async():
+    global pytchatObjAsync
+    pytchatObjAsync = LiveChatAsync(video_id=broadcastId, callback = pytchat_check)
+    while pytchatObjAsync.is_alive():
+        #await asyncio.sleep(1)
+        #print("pytchatObjAsync is alive!")
+        await websocket_setup_listen()
+        
+        
+    print("pytchatObjAsync is NOT alive!")
+    # If you want to check the reason for the termination, 
+    # you can use `raise_for_status()` function.
+    try:
+      pytchatObjAsync.raise_for_status()
+    except pytchat.ChatDataFinished:
+      print("Chat data finished.")
+    except Exception as e:
+      print(type(e), str(e))
 
     
     
@@ -529,16 +547,7 @@ if __name__ == "__main__":
     fillGlobals()  # Give values to global variables. Needs refactoring lol
     mqtt_setup()  # Setup mqtt server
     websocket_initial_setup()
-    
-    # New Async stuff from https://stackoverflow.com/questions/31623194/asyncio-two-loops-for-different-i-o-tasks
     try:
-        loop = asyncio.get_event_loop()
-        loop.create_task(pytchat_check())
-        #loop.create_task(websocket_setup_listen())
-        
-        loop.run_until_complete(websocket_setup_listen())
-        #loop.run_forever(pytchat_check())
-        #loop.run_forever()
-    finally:
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
+        asyncio.run(main_async())
+    except KeyboardInterrupt: #if you CTRL + C it quits.
+        pass
