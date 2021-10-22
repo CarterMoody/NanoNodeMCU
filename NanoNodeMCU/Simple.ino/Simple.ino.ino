@@ -134,7 +134,7 @@ void setup() {
   }
 
   // server address, port and URL
-  webSocket.begin("yapraiwallet.space", 80, "/call");
+  webSocket.begin("api.nanos.cc", 80, "/socket");
 
   // event handler
   webSocket.onEvent(webSocketEvent);
