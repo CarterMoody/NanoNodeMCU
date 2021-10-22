@@ -65,7 +65,7 @@ def try_load_credentials():
         printBetter('Loading Credentials From File...')
         with open('token.pickle', 'rb') as token:
             credentials = pickle.load(token)
-    else
+    else:
         printBetter("credentials file: 'token.pickle' not found")
 
 # If there are no valid credentials available, then either refresh the token or log in.
@@ -132,8 +132,7 @@ DAILY_USER_DICT = {}
 
 ########### TIME ###########################
 native_dt = datetime.now()  # Reset Time to Local.. Not sure if needed pls test
-printBetter("printing native_dt")
-printBetter(native_dt)
+
 
 # Get timezone/offset aware datetime
 #CURRENT_DATE_TIME = datetime.now(pytz.utc)
@@ -413,6 +412,9 @@ def fillGlobals():
     
 
 def main():
+    printBetter("printing native_dt")
+    printBetter(native_dt)
+    
     check_credentials()
     
     fillGlobals()  # Give values to global variables. Needs refactoring lol
