@@ -1,0 +1,16 @@
+7ujMko0Momentum2Dahua
+
+curl --user admin:7ujMko0Momentum2Dahua http://192.168.0.187/cgi-bin/magicBox.cgi?action=reboot
+
+
+This command reboots successfully!
+curl -g --user admin:Momentum2Dahua --digest http://admin:Momentum2Dahua@192.168.0.187/cgi-bin/magicBox.cgi?action=reboot
+
+
+Trying to get audio config
+curl -g --user admin:Momentum2Dahua --digest http://admin:Momentum2Dahua@192.168.0.187/cgi-bin/configManager.cgi?action=getConfig&name=Encode
+
+Trying to set audio sample rate
+curl -g --data "paramName=head.Audio.Frequency&paramValue=64000" --user admin:Momentum2Dahua --digest http://admin:Momentum2Dahua@192.168.0.187/cgi-bin/configManager.cgi?action=setConfig&paramName=paramValue
+
+curl -g --user admin:Momentum2Dahua --digest http://admin:Momentum2Dahua@192.168.0.187/cgi-bin/configManager.cgi?action=setConfig&Encode[0].MainFormat[0].Audio.Frequency=48000
