@@ -171,47 +171,57 @@ def on_connect(client, userdata, flags, rc):
    printBetter("Connected with result code " + str(rc))
    # Subscribing in on_connect() means that if we lose the connection and
    # reconnect then subscriptions will be renewed.
-   client.subscribe("/leds/pi")
+   client.subscribe("#")
 # The callback for when a PUBLISH message is received from the server.
 
 
 # Reacts to message received from client based on what bytes it receives in the payload
 def on_message(client, userdata, msg):
-    printBetter(msg.topic+" "+str(msg.payload))
+    printBetter(msg.topic+" "+str( msg.payload)) 
     # Check if this is a message for the Pi LED.
-    if msg.topic == '/leds/pi':
-        # Look at the message data and perform the appropriate action.
-        #if msg.payload == b'NANO_RECEIVED':
-        #    GPIO.output(LED_PIN, GPIO.HIGH)
-        messageString = str(msg.payload.decode("utf-8"))
-        printBetter(f"received message: {messageString}")
-        words = messageString.split()  # Split text on spaces
-        if words[0] == 'nano_received':
-            amount_received = words[1]
-            responseMessage = "Received %s $NANO, Thanks a lot! Feeding now..." % (amount_received)
-            send_chat(responseMessage)            
+    printBetter("msg.topic: ")
+    printBetter(msg.topic)
+    printBetter("msg.payload: ")
+    decoded_payload_string = msg.payload.decode() # Payload is originally a bytes object
+    printBetter(decoded_payload_string)
+    if msg.topic == 'nodemcu/heartbeat':
+        printBetter("msg.topic is nodemcu/heartbeat")
+         # Look at the message data and perform the appropriate action. 
+        if decoded_payload_string == "heartbeat": 
+            #print("heartbeatAcknowledged")
+            printBetter('Sending message to esp8266')
+            client.publish('nodemcu/heartbeatAcknowledged', 'heartbeatAcknowledged')
+            
+    # Show status of sensors NOT IMPLEMENTED YET
+    if msg.topic == "/birdFeeder/status":
+        if msg.payload == "1":
+            printBetter("Topic: ", msg.topic + "\nMessage: " + str(msg.payload))
+    if msg.topic == "/birdFeeder/status":
+        if msg.payload == "0":
+            printBetter("Topic: ", msg.topic + "\nMessage: " + str(msg.payload))
             
 
 
 def mqtt_setup():
     global client
-    # Create MQTT client and connect to localhost, i.e. the Raspberry Pi running
+    # Create MQTT client and connect to localhost, i.e. the Raspberry Pi running 
     # this script and the MQTT server.
-    client = mqtt.Client()
-    client.on_connect = on_connect
-    client.on_message = on_message
-    client.connect('localhost', 1883, 60)
-    # Connect to the MQTT server and process messages in a background thread.
+    mqtt_broker_ip = "localhost"
+    client = mqtt.Client() 
+    client.on_connect = on_connect 
+    client.on_message = on_message 
+    client.connect(mqtt_broker_ip, 1883, 60) 
+    # Connect to the MQTT server and process messages in a background thread. (Non-blocking)
     client.loop_start()
-    # Main loop to listen for button presses.
-    printBetter('Script is running, press Ctrl-C to quit...')
+    #client.loop_forever()
+    # Main loop to listen for button presses. 
+    printBetter('Script is running, press Ctrl-C to quit...') 
     time.sleep(3)
 
 
 def mqtt_send(msg):
    printBetter(f"Sending message to esp8266: {msg}")
-   #client.publish('/leds/esp8266', 'TOGGLE')
-   client.publish('/leds/esp8266', msg)
+   client.publish('nodemcu/heartbeatAcknowledged', msg)
 
 
 def checkDictionary(key):
@@ -279,6 +289,7 @@ def richCommand(command, msgAuthorName):
 
 
 def executeCommand(command):
+    global client
     if (command == '!feed'):
         updateDateTime()
         #printBetter("successful !feed command... trying subprocess.call")
@@ -286,7 +297,8 @@ def executeCommand(command):
         #printBetter(CURRENT_DATE_TIME)
         printBetter("*** *** *** *** ***")
         printBetter("successful !feed command... trying to send mqtt message")
-        mqtt_send('RUNMOTOR')
+        #mqtt_send('RUNMOTOR')
+        client.publish('nodemcu/runmotor', 'runmotor')
         printBetter("*** *** *** *** ***")
         
 
@@ -413,7 +425,7 @@ def printBetter(String):
     #print("|{}:{}:{}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), end='', flush=True)
     print("|{}:{}:{}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), flush=True)
 
-def fillGlobals():
+def fillGlobalsPytChatObj():
     global livechat_id
     global broadcastId
     global pytchatObj
@@ -438,17 +450,17 @@ def nano_to_raw(raw): #Read comment above:
 
 def load_nodes(): #Load nodes.json file with all nodes (websocket addresses)
     global nodes
-    print("Loading list of nodes from file...")
+    printBetter("Loading list of nodes from file...")
     with open("nodes.json", "r") as file:
         nodes = json.load(file)
-        print("Nodes loaded.")
+        printBetter("Nodes loaded.")
 
 def assign_random_node(): #Assign node randomly.
     global activeNode
-    print("Assigning random node...")
+    printBetter("Assigning random node...")
     load_nodes()
     activeNode = nodes["nodes"][random.randint(0, len(nodes))]
-    print(f"Node assigned! ({activeNode})")
+    printBetter(f"Node assigned! ({activeNode})")
     
 def websocket_initial_setup(): # Used to be run globally
     global ssl_context
@@ -470,12 +482,13 @@ def websocket_initial_setup(): # Used to be run globally
 
 async def websocket_setup_listen(): #Connect to websocket. Subscribe and listen for transactions.
     global websocket
-    print("doing the websocket thing")
+    global client
+    printBetter("doing the websocket thing")
     async with websockets.connect(activeNode, ssl=ssl_context) as websocket:
-        print(f"Connected to websocket: {activeNode}\nSending subscription to websocket.")
+        printBetter(f"Connected to websocket: {activeNode}\nSending subscription to websocket.")
         await websocket.send('{"action": "subscribe","topic": "confirmation","options":{"accounts": ["' + nano_receive_address + '"]}}') #F strings don't work :(
         print(await websocket.recv())
-        print("Subscribed!\nNow waiting for donations...\n\n")
+        printBetter("Subscribed!\nNow waiting for donations...\n\n")
 
 
     
@@ -493,7 +506,10 @@ async def websocket_setup_listen(): #Connect to websocket. Subscribe and listen 
                         amountNANO = raw_to_nano(rec['message']['amount'])
                         printBetter(f"GOT DONATION FROM {accountAddress}\nAmount RAW: {amountRaw}\nAmount NANO: {amountNANO}")
                         if (int(amountRaw) > minimimNanoThreshold):
-                            mqtt_send('RUNMOTOR')
+                            printBetter("*** *** *** *** ***")
+                            printBetter("successful Nano donation... trying to send mqtt message")
+                            client.publish('nodemcu/runmotor', 'runmotor')
+                            printBetter("*** *** *** *** ***")
                             responseMessage = "Received %s $NANO, Thanks a lot! Feeding now..." % (amountNANO)
                             send_chat(responseMessage)    
                         
@@ -504,30 +520,36 @@ async def websocket_setup_listen(): #Connect to websocket. Subscribe and listen 
 # Adapted from here: https://github.com/taizan-hokuto/pytchat/wiki/LiveChatAsync
 # callback function is automatically called periodically
 async def pytchat_check():
-    while pytchatObj.is_alive():
-        for msg in pytchatObj.get().sync_items():
-            #printBetter(f"NEW MESSAGE: {msg.datetime} {msg.author.name} {msg.message}")
-            printBetter(f" NEW MESSAGE: {msg.datetime} | {msg.author.name} | {msg.message}")
-            
-            # This should ensure datetime of the message is in your current timezone, but will overwrite actual message time
-            updateDateTime()
-            msg.datetime = CURRENT_DATE_TIME
+    while 1:
+        if pytchatObj.is_alive():
+            for msg in pytchatObj.get().sync_items():
+                #printBetter(f"NEW MESSAGE: {msg.datetime} {msg.author.name} {msg.message}")
+                printBetter(f" NEW MESSAGE: {msg.datetime} | {msg.author.name} | {msg.message}")
+                
+                # This should ensure datetime of the message is in your current timezone, but will overwrite actual message time
+                updateDateTime()
+                msg.datetime = CURRENT_DATE_TIME
 
-            # Check if user used a command, and if it should feed
-            if (msg.author.name == my_channel_name) and ("test" not in msg.message):  # Don't respond to myself
-                printBetter("Message is from myself, continue")
-                continue
-            else:
-                respond(msg)
-            #await chatdata.tick_async()
-        await asyncio.sleep(1)
+                # Check if user used a command, and if it should feed
+                if (msg.author.name == my_channel_name) and ("test" not in msg.message):  # Don't respond to myself
+                    printBetter("Message is from myself, continue")
+                    continue
+                else:
+                    respond(msg)
+                #await chatdata.tick_async()
+            await asyncio.sleep(1)
+    
+        else:
+            # pytchatObj must not be alive anymore, try to reconnect
+            sleep(3)
+            printBetter("pytchatObj is not alive anymore... trying to create again...")
+            fillGlobalsPytChatObj()
+    
 
-    
-    
-if __name__ == "__main__":
-    check_credentials()
-    fillGlobals()  # Give values to global variables. Needs refactoring lol
-    mqtt_setup()  # Setup mqtt server
+
+  
+  
+def launch_async_tasks():
     websocket_initial_setup()
     
     # New Async stuff from https://stackoverflow.com/questions/31623194/asyncio-two-loops-for-different-i-o-tasks
@@ -542,3 +564,14 @@ if __name__ == "__main__":
     finally:
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
+    
+if __name__ == "__main__":
+    check_credentials()
+    fillGlobalsPytChatObj()  # Give values to global variables. Needs refactoring lol
+    mqtt_setup()  # Setup mqtt server
+    launch_async_tasks()
+    
+    # Adding loop to test mqtt
+    #while(1):
+    #    print("mqtt running")
+    #    sleep(5)
