@@ -1,43 +1,47 @@
 # RPi
 import time 
-import RPi.GPIO as GPIO 
-import paho.mqtt.client as mqtt 
-# Configuration: 
-LED_PIN        = 24 
-BUTTON_PIN     = 23 
-# Initialize GPIO for LED and button. 
-GPIO.setmode(GPIO.BCM) 
-GPIO.setwarnings(False) 
-GPIO.setup(LED_PIN, GPIO.OUT) 
-GPIO.output(LED_PIN, GPIO.LOW) 
-GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP) 
+#import RPi.GPIO as GPIO 
+import paho.mqtt.client as mqtt
+
+# Configuration:
+
 # Setup callback functions that are called when MQTT events happen like 
 # connecting to the server or receiving data from a subscribed feed. 
 def on_connect(client, userdata, flags, rc): 
-   print("Connected with result code " + str(rc)) 
-   # Subscribing in on_connect() means that if we lose the connection and 
-   # reconnect then subscriptions will be renewed. 
-   client.subscribe("/leds/pi") 
+    print("Connected with result code " + str(rc)) 
+    # Subscribing in on_connect() means that if we lose the connection and 
+    # reconnect then subscriptions will be renewed. 
+    client.subscribe("#") 
 # The callback for when a PUBLISH message is received from the server. 
 def on_message(client, userdata, msg): 
-   print(msg.topic+" "+str( msg.payload)) 
-   # Check if this is a message for the Pi LED. 
-   if msg.topic == '/leds/pi': 
-       # Look at the message data and perform the appropriate action. 
-       if msg.payload == b'ON': 
-           GPIO.output(LED_PIN, GPIO.HIGH) 
-       elif msg.payload == b'OFF': 
-           GPIO.output(LED_PIN, GPIO.LOW) 
-       elif msg.payload == b'TOGGLE': 
-           GPIO.output(LED_PIN, not GPIO.input(LED_PIN)) 
+    print(msg.topic+" "+str( msg.payload)) 
+    # Check if this is a message for the Pi LED. 
+    if msg.topic == 'outTopic': 
+         # Look at the message data and perform the appropriate action. 
+        if msg.payload == "hello world": 
+            print("hi!")
+           
+           
+# Show status of sensors  
+    #room1
+    if msg.topic == "/birdFeeder/status":
+        if msg.payload == "1":
+            print ("Topic: ", msg.topic + "\nMessage: " + str(msg.payload))
+    if msg.topic == "/birdFeeder//status":
+        if msg.payload == "0":
+            print ("Topic: ", msg.topic + "\nMessage: " + str(msg.payload))
+
+
 # Create MQTT client and connect to localhost, i.e. the Raspberry Pi running 
-# this script and the MQTT server. 
+# this script and the MQTT server.
+mqtt_broker_ip = "localhost"
 client = mqtt.Client() 
 client.on_connect = on_connect 
 client.on_message = on_message 
-client.connect('localhost', 1883, 60) 
-# Connect to the MQTT server and process messages in a background thread. 
-client.loop_start() 
+client.connect(mqtt_broker_ip, 1883, 60) 
+# Connect to the MQTT server and process messages in a background thread. (Non-blocking)
+#client.looop_start()
+client.loop_forever()
 # Main loop to listen for button presses. 
 print('Script is running, press Ctrl-C to quit...') 
 time.sleep(3)
@@ -52,5 +56,5 @@ while True:
        ## Send a toggle message to the ESP8266 LED topic. 
        ##client.publish('/leds/esp8266', 'TOGGLE')
    print('Sending message to esp8266')
-   client.publish('/leds/esp8266', 'TOGGLE')
+   #client.publish('/leds/esp8266', 'TOGGLE')
    time.sleep(1)
