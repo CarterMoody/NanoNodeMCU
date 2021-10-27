@@ -20,35 +20,35 @@ DahuaAPI\
   4. set64.sh - Sets Audio sampling frequency to 64000    
 
 MqttMotor\    
-  MqttMotor.ino 
+  1. MqttMotor.ino 
     - Connects to MQTT broker (RPI)    
     - sends heartbeats    
     - responds to MQTT messages    
     - spins motor    
 
 RPi\    
-  MqttServerPahoWorking.py 
+  1. MqttServerPahoWorking.py 
     - Simple implementation of MQTT client in Python for testing.    
-  YoutubeMqttNano.py     
+  2. YoutubeMqttNano.py     
     - Fully fledged program    
     - Connects to MQTT broker (RPI)    
     - listens for hearbeats from NodeMCU Arduino and responds with heartbeat Acknowledgement (ACK)    
     - sends MQTT messages    
     - Monitors NANO network via websocket    
     - Monitors Youtube Live chat via google API    
-  forever    
+  3. forever    
     - simple bash program to cause infinite running of python program    
     - Needs work/research. shell=true is not safe.     
     - Requires python modules installed at sudo system-wide level.    
     - Should be switched to use pyenv    
     - Requires changing default OS python version to new python3 install    
-  nodes.json    
+  4. nodes.json    
     - list of nodes for Nano Websocket functionality    
-  requirements.txt    
+  5. requirements.txt    
     - list of requirements for Nano Websocket functionality    
    
 Testing\    
-  mqttPahoSubClientWorking.ino    
+  1. mqttPahoSubClientWorking.ino    
     - very simple working Arduino code for MQTT client    
 
 # Instructions: https://docs.google.com/document/d/11qHZTV_VtY0-6eIIvyDKzXHq9InnWSXJNmRCBqyEh5M/edit?usp=sharing
