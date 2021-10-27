@@ -14,10 +14,10 @@ Clients subscribe to certain 'topics', and publish to 'topics'. The broker sees 
 Description of Folders/Files: (all of these monitor NTP server)    
 
 DahuaAPI\    
-  -# pdf - Shows API specific to my Dahua Live cam.    
-  -# SSH and Curl - API examples    
-  -# set48.sh - Sets Audio sampling frequency to 48000    
-  -# set64.sh - Sets Audio sampling frequency to 64000    
+  1. pdf - Shows API specific to my Dahua Live cam.    
+  2. SSH and Curl - API examples    
+  3. set48.sh - Sets Audio sampling frequency to 48000    
+  4. set64.sh - Sets Audio sampling frequency to 64000    
 
 MqttMotor\    
   MqttMotor.ino 
