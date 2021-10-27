@@ -8,6 +8,6 @@ processStartCount = 0
 while True:
     print("\n\nThis is loop number: " + str(processStartCount) )
     print("\nStarting " + filename)
-    p = Popen("python3 " + filename, shell=True)
+    p = Popen("/usr/bin/python3.7 " + filename, shell=True)
     p.wait()                    # Waits for process "p" to die the re-loops
     processStartCount = processStartCount+1
