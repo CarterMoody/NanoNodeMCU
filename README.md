@@ -52,7 +52,7 @@ Testing\
     - very simple working Arduino code for MQTT client    
 
 
-QUICK START
+QUICK START    
   On NodeMcu (esp8266), load code MqttMotor.ino
   On RPi, open a cmd launch MqttServerPahoWorking.py
     Verify receiving heartbeats from the NodeMCU esp8266
