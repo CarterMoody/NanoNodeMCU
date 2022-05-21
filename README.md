@@ -1,3 +1,14 @@
+QUICK START    
+  On NodeMcu (esp8266), load code MqttMotor.ino
+  On RPi, open a cmd launch MqttServerPahoWorking.py
+    Verify receiving heartbeats from the NodeMCU esp8266
+  Set up IP Camera and verify streaming
+  Goto youtube live dashboard and start a stream
+  Delete token.pickle if present (code will detect none exists, then ask you to re-authenticate).
+  On Rpi, open another cmd and launch YoutubeMqttNano.py via the forever script (./forever python YoutubeMqttNano.py)
+    Follow authentication flow to get a new token.pickle (sign in and allow access)
+
+
 # NanoNodeMCU
 React to NANO Network on NodeMCU
 
@@ -52,15 +63,7 @@ Testing\
     - very simple working Arduino code for MQTT client    
 
 
-QUICK START    
-  On NodeMcu (esp8266), load code MqttMotor.ino
-  On RPi, open a cmd launch MqttServerPahoWorking.py
-    Verify receiving heartbeats from the NodeMCU esp8266
-  Set up IP Camera and verify streaming
-  Goto youtube live dashboard and start a stream
-  Delete token.pickle if present (code will detect none exists, then ask you to re-authenticate).
-  On Rpi, open another cmd and launch YoutubeMqttNano.py via the forever script (./forever python YoutubeMqttNano.py)
-    Follow authentication flow to get a new token.pickle (sign in and allow access)
+
    
   
 
