@@ -15,6 +15,7 @@ QUICK START
     2. Should see mqtt message sent to NodeMCU esp8266
     3. Should see mqtt message received from  NodeMCU esp8266
     4. On youtube chat, should see RPi talking to user
+  8. Resync audio by running ./set64.sh and ./set48.sh which sends a request to the Dahua camera to switch audio sampling frequency, lining it back up (need to set a cron job to do this every 30 minutes! or else audio goes out of sync)
 
 
 # NanoNodeMCU
