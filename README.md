@@ -7,15 +7,15 @@ QUICK START
   4. Goto youtube live dashboard and start a stream    
   5. Delete token.pickle if present (code will detect none exists, then ask you to re-authenticate).    
   6. On Rpi, open another cmd and launch YoutubeMqttNano.py via the forever script (simply execute ./forever3)    
-    1. Follow authentication flow to get a new token.pickle (sign in and allow access)
-    2. Verify connection in terminal (should find correct broadcast id of your stream
-    3. Wait a minute or so for a heartbeat from the NodeMCU esp8266 (they come in every minute)
-  7. In youtube broswer, try sending "test !feed" in chat to dispense food.
-    1. Should see reaction in command prompt running YoutubeMqttNano.py
-    2. Should see mqtt message sent to NodeMCU esp8266
-    3. Should see mqtt message received from  NodeMCU esp8266
-    4. On youtube chat, should see RPi talking to user
-  8. Resync audio by running ./set64.sh and ./set48.sh which sends a request to the Dahua camera to switch audio sampling frequency, lining it back up (need to set a cron job to do this every 30 minutes! or else audio goes out of sync)
+    1. Follow authentication flow to get a new token.pickle (sign in and allow access)    
+    2. Verify connection in terminal (should find correct broadcast id of your stream    
+    3. Wait a minute or so for a heartbeat from the NodeMCU esp8266 (they come in every minute)    
+  7. In youtube broswer, try sending "test !feed" in chat to dispense food.    
+    1. Should see reaction in command prompt running YoutubeMqttNano.py    
+    2. Should see mqtt message sent to NodeMCU esp8266    
+    3. Should see mqtt message received from  NodeMCU esp8266    
+    4. On youtube chat, should see RPi talking to user    
+  8. Resync audio by running ./set64.sh and ./set48.sh which sends a request to the Dahua camera to switch audio sampling frequency, lining it back up (need to set a cron job to do this every 30 minutes! or else audio goes out of sync)    
 
 
 # NanoNodeMCU
