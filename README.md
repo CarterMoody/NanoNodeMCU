@@ -6,7 +6,7 @@ QUICK START
   3. Set up IP Camera and verify streaming    
   4. Goto youtube live dashboard and start a stream    
   5. Delete token.pickle if present (code will detect none exists, then ask you to re-authenticate).    
-  6. On Rpi, open another cmd and launch YoutubeMqttNano.py via the forever script (./forever python YoutubeMqttNano.py)    
+  6. On Rpi, open another cmd and launch YoutubeMqttNano.py via the forever script (./forever3)    
     1. Follow authentication flow to get a new token.pickle (sign in and allow access)
     2. Verify connection in terminal (should find correct broadcast id of your stream
     3. Wait a minute or so for a heartbeat from the NodeMCU esp8266 (they come in every minute)
