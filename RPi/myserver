@@ -1,1 +1,8 @@
 /usr/bin/python3.7 /home/pi/Desktop/NanoNodeMCU/RPi/YoutubeMqttNano.py
+
+ret=$?
+if [ $ret -ne 0 ]; then
+    #Handle failure
+    #exit if required
+    exit 69
+fi
