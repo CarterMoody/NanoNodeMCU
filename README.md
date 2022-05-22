@@ -79,3 +79,8 @@ Testing\
   
 
 # Instructions: https://docs.google.com/document/d/11qHZTV_VtY0-6eIIvyDKzXHq9InnWSXJNmRCBqyEh5M/edit?usp=sharing
+
+
+NOTE: When copy/pasting code from Windows, and unknown errors occur. Try the following commands to clean up newline characters:    
+1. cat -v myfile      
+2. tr -d '\r' < myfile > myfileNoBadCharacters    
