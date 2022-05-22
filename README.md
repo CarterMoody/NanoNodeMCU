@@ -1,4 +1,4 @@
-QUICK START    
+QUICK START (Assumes you have mqtt server up and running)    
   1. On NodeMcu (esp8266), load code MqttMotor.ino    
   2. On RPi, open a cmd launch MqttServerPahoWorking.py    
     1. Verify receiving heartbeats from the NodeMCU esp8266   
