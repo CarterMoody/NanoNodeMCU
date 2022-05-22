@@ -56,15 +56,17 @@ RPi\
     - sends MQTT messages    
     - Monitors NANO network via websocket    
     - Monitors Youtube Live chat via google API    
-  3. forever    
+  3. forever REPLACED BY 'forever3' and 'myserver'     
     - simple bash program to cause infinite running of python program    
     - Needs work/research. shell=true is not safe.     
     - Requires python modules installed at sudo system-wide level.    
     - Should be switched to use pyenv    
     - Requires changing default OS python version to new python3 install    
-  4. nodes.json    
+  4. forever3 and myserver
+    - Launch these by modifying as you see fit, then > ./forever3
+  6. nodes.json    
     - list of nodes for Nano Websocket functionality    
-  5. requirements.txt    
+  7. requirements.txt    
     - list of requirements for Nano Websocket functionality    
    
 Testing\    
