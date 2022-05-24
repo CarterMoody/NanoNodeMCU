@@ -1,4 +1,5 @@
-until ./myserver; do
+#until ./myserver; do
+until /usr/bin/python3.7 /home/pi/Desktop/NanoNodeMCU/RPi/YoutubeMqttNano.py; do
     echo "Server 'myserver' crashed with exit code $?.  Respawning.." >&2
     sleep 1
 done
