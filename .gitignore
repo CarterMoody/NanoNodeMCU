@@ -1,0 +1,7 @@
+DahuaAPI/
+Testing/
+CameraUsername.txt
+CameraPassword.txt
+token.pickle
+client_secrets.json
+mosquitto-repo.gpg.key

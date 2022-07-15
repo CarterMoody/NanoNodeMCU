@@ -5,6 +5,8 @@ import os
 import pickle
 # Google's Request
 from google.auth.transport.requests import Request
+import requests # Python Request library used for HTTP requests and restarting the camera, setting sample rate
+from requests.auth import HTTPDigestAuth
 from google_auth_oauthlib.flow import InstalledAppFlow
 import google_auth_oauthlib.flow
 import googleapiclient.discovery
@@ -17,7 +19,7 @@ import pytchat
 from pytchat import LiveChatAsync
 import time
 from time import sleep
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, timedelta #datetime is both a library, AND a module. Not the whole library is imported here!
 import pytz
 import sys
 from json import dumps, loads
@@ -177,19 +179,20 @@ def on_connect(client, userdata, flags, rc):
 
 # Reacts to message received from client based on what bytes it receives in the payload
 def on_message(client, userdata, msg):
-    printBetter(msg.topic+" "+str( msg.payload)) 
+    #printBetter(msg.topic+" "+str( msg.payload)) 
     # Check if this is a message for the Pi LED.
-    printBetter("msg.topic: ")
-    printBetter(msg.topic)
-    printBetter("msg.payload: ")
+    #printBetter("msg.topic: ")
+    #printBetter(msg.topic)
+    #printBetter("msg.payload: ")
     decoded_payload_string = msg.payload.decode() # Payload is originally a bytes object
-    printBetter(decoded_payload_string)
+    #printBetter(decoded_payload_string)
+    printBetter("Received MQTT Message: " + "Topic: " + msg.topic + "Payload: " + decoded_payload_string)
     if msg.topic == 'nodemcu/heartbeat':
-        printBetter("msg.topic is nodemcu/heartbeat")
+        #printBetter("msg.topic is nodemcu/heartbeat")
          # Look at the message data and perform the appropriate action. 
         if decoded_payload_string == "heartbeat": 
             #print("heartbeatAcknowledged")
-            printBetter('Sending message to esp8266')
+            #printBetter('Sending message to esp8266')
             client.publish('nodemcu/heartbeatAcknowledged', 'heartbeatAcknowledged')
             
     # Show status of sensors NOT IMPLEMENTED YET
@@ -357,12 +360,91 @@ def timestamp_from_datetime(dt):
     return dt.replace(tzinfo=pytz.utc).timestamp()
 
 
-def updateDateTime():
+def updateDateTime(timezone="local"):
     #print("updating date time")
     global CURRENT_DATE_TIME
-    #CURRENT_DATE_TIME = datetime.now(pytz.utc)
-    CURRENT_DATE_TIME = datetime.now()
+    if timezone ==  "utc":
+        CURRENT_DATE_TIME = datetime.now(pytz.utc)
+    elif timezone == "local":
+        CURRENT_DATE_TIME = datetime.now()
 
+
+# Gets the current time, but returns it in the ISO-8601 Format
+def get_iso8601_time(offset_sec=0, offset_minute=0, offset_hour=0, offset_day=0, offset_month=0, offset_year=0):
+    global CURRENT_DATE_TIME
+    utcTime = datetime.now(pytz.utc)
+    today = date.today()
+    todayString = "{}-{:02d}-{:02d}".format(today.year + offset_year, today.month + offset_month, today.day + offset_day)
+    offsetTime = utcTime + timedelta(seconds = offset_sec)
+        
+    timeString = "T" + "{:02d}:{:02d}:{:02d}".format(offsetTime.hour, offsetTime.minute, offsetTime.second)
+    iso8601String = todayString + timeString
+    return iso8601String
+    
+
+# Read file into string
+def readFile(filename):
+    with open(filename, 'r') as file:
+        data = file.read()
+        return data
+    
+def setAudioSampleRate(frequency):
+    username = readFile("CameraUsername.txt")
+    password = readFile("CameraPassword.txt")
+    url = "http://" + username + ":" + password + "@192.168.1.158/cgi-bin/configManager.cgi?action=setConfig&Encode[0].MainFormat[0].Audio.Frequency=" + frequency
+    #url = "http://" + username + ":" + password + "@192.168.1.158/cgi-bin/configManager.cgi?action=reboot"
+    r = requests.post(url, auth=HTTPDigestAuth(username, password))
+    if r.status_code != 200:
+        printBetter("Request to toggle IP Camera audio has failed!")
+        printBetter(r)    
+
+# Toggle Dahua IP Camera Audio back and forth, to tickle the YouTube stream ingestion point and hopefully start
+def toggleIPCameraAudio():
+    printBetter("Toggling Camera Audio")
+    setAudioSampleRate("48000")
+    sleep(5)
+    setAudioSampleRate("64000")
+    sleep(5)
+    return 1
+
+
+# Start Live Broadcast VIA YouTubeAPI
+# https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/insert
+def start_livestream():
+    printBetter("start_livestream")
+    offset_sec = 10 # Set start time to 10 seconds from now
+    startTime = get_iso8601_time(offset_sec=15)
+    startTimeStr = str(startTime)
+    endTime = get_iso8601_time(offset_year=1)
+    printBetter(f"startTime: {startTime}")
+    printBetter(f"endTime: {endTime}")
+    titleStr = "Live Interactive Bird Feeder Arizona"
+    descriptionStr = readFile("liveStreamDescription.txt")
+    request = youtubeAPI.liveBroadcasts().insert(
+        part="snippet, contentDetails,status",
+        body={
+          "contentDetails": {
+            "enableAutoStart": True,
+            "enableClosedCaptions": False,
+            "enableContentEncryption": True,
+            "enableDvr": True,
+            "enableEmbed": True,
+            "recordFromStart": True,
+            "startWithSlate": True,
+            "latencyPreference": "low",
+          },
+          "snippet": {
+            "title": titleStr,
+            "description": descriptionStr,
+            "scheduledStartTime": startTimeStr,
+          },
+          "status": {
+            "privacyStatus": "public"
+          }
+        }
+    )
+    response = request.execute()
+    #print(response)   
 
 # Send Chat VIA YouTubeAPI
 # https://developers.google.com/youtube/v3/live/docs/liveChatMessages/insert?apix=true
@@ -414,16 +496,32 @@ def get_live_chat_id_for_stream_now():
     response = request.execute()
     
     #print(response)
-    return response['items'][0]['snippet']['liveChatId']
-
-        
+    try:
+        return response['items'][0]['snippet']['liveChatId']
+    except:
+        printBetter("Error on getting live_chat_id, are you streaming?")
+        return 69
+    
+# Going to check and make sure stream is running
+def get_live_chat_id():
+    livechat_id = get_live_chat_id_for_stream_now()
+    while ( livechat_id == 69 ): # Failed to find livechat, need to try to launch a new livestream
+        start_livestream()
+        sleep(120) # Give the camera time to start up. This value is technically smaller, as livestream has an offset
+        toggleIPCameraAudio()
+        printBetter("Camera Audio Toggled")
+        sleep(30) # Give YouTube some time to connect the stream, and go live
+        livechat_id = get_live_chat_id_for_stream_now()
+        sleep(5)
+    return livechat_id
+         
         
 # Generic wrapper to print which prints messages nicely with timestamp
 def printBetter(String):
     global CURRENT_DATE_TIME
     updateDateTime()
     #print("|{}:{}:{}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), end='', flush=True)
-    print("|{}:{}:{}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), flush=True)
+    print("|{:02d}:{:02d}:{:02d}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), flush=True)
 
 def fillGlobalsPytChatObj():
     global livechat_id
@@ -431,8 +529,9 @@ def fillGlobalsPytChatObj():
     global pytchatObj
 
     #livechat_id = get_live_chat_id_for_stream_now(credentials)
-    livechat_id = get_live_chat_id_for_stream_now()
+    livechat_id = get_live_chat_id()
     printBetter(f"livechat_id: {livechat_id}")
+
     #print(livechat_id)
 
     broadcastId = get_broadcastId()
@@ -539,11 +638,14 @@ async def pytchat_check():
                 #await chatdata.tick_async()
             await asyncio.sleep(1)
     
+        
         else:
             # pytchatObj must not be alive anymore, try to reconnect
             sleep(3)
             printBetter("pytchatObj is not alive anymore... trying to create again...")
-            fillGlobalsPytChatObj()
+            #Handle gracefully without restart...
+            #fillGlobalsPytChatObj()
+            exit()
     
 
 
@@ -567,6 +669,8 @@ def launch_async_tasks():
     
 if __name__ == "__main__":
     check_credentials()
+    #start_livestream()
+    #restartIPCamera()
     fillGlobalsPytChatObj()  # Give values to global variables. Needs refactoring lol
     mqtt_setup()  # Setup mqtt server
     launch_async_tasks()
