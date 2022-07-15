@@ -388,11 +388,12 @@ def readFile(filename):
         data = file.read()
         return data
     
-    
 def setAudioSampleRate(frequency):
-    url = "http://USERNAME:PASSWORD@192.168.1.158/cgi-bin/configManager.cgi?action=setConfig&Encode[0].MainFormat[0].Audio.Frequency=" + frequency
-    #url = "http://USERNAME:PASSWORD@192.168.1.158/cgi-bin/configManager.cgi?action=reboot"
-    r = requests.post(url, auth=HTTPDigestAuth('USERNAME', 'PASSWORD'))
+    username = readFile("CameraUsername.txt")
+    password = readFile("CameraPassword.txt")
+    url = "http://" + username + ":" + password + "@192.168.1.158/cgi-bin/configManager.cgi?action=setConfig&Encode[0].MainFormat[0].Audio.Frequency=" + frequency
+    #url = "http://" + username + ":" + password + "@192.168.1.158/cgi-bin/configManager.cgi?action=reboot"
+    r = requests.post(url, auth=HTTPDigestAuth(username, password))
     if r.status_code != 200:
         printBetter("Request to toggle IP Camera audio has failed!")
         printBetter(r)    
