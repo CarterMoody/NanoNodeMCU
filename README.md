@@ -1,6 +1,6 @@
 QUICK START (Assumes you have mqtt server up and running)    
   1. On NodeMcu (esp8266), load code MqttMotor.ino    
-  2. On RPi, open a cmd launch MqttServerPahoWorking.py    
+  2. On RPi, open a cmd launch .\forever3   
     1. Verify receiving heartbeats from the NodeMCU esp8266   
     2. Can now close this command prompt 
   3. Set up IP Camera and verify streaming    
