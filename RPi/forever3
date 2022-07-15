@@ -1,3 +1,5 @@
+PATH=/home/pi/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/games:/usr/games
+
 declare -i inner_crash=0
 declare -i outer_crash=0
 
