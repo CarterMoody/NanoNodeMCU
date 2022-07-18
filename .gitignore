@@ -5,3 +5,5 @@ CameraPassword.txt
 token.pickle
 client_secrets.json
 mosquitto-repo.gpg.key
+RPi/ErrorLog.txt
+RPi/NormalLog.txt
