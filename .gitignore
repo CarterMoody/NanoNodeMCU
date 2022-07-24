@@ -7,3 +7,4 @@ client_secrets.json
 mosquitto-repo.gpg.key
 RPi/ErrorLog.txt
 RPi/NormalLog.txt
+RPi/DAILY_USER_DICT.pkl
