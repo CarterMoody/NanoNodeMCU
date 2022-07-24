@@ -132,7 +132,7 @@ VALID_COMMANDS = ['!feed']
 nano_receive_address = "nano_36zcuomrbm6mudwused38ptrofk43kmqphuprcxwxkomk647wgaq6ocsweyb"
 minimimNanoThreshold = 0
 
-FEED_INTERVAL_SECONDS = 30  # Set this to amount of time before same user can
+FEED_INTERVAL_SECONDS = 5  # Set this to amount of time before same user can
 #                               feed again, 0 for instant
 FEED_INTERVAL_MINUTES = 0  # Set to 0 to turn off
 FEED_INTERVAL_HOURS = 0    # Set to 0 to turn off
@@ -141,12 +141,15 @@ FEED_INTERVAL_TOTAL_SECONDS = FEED_INTERVAL_SECONDS \
     + (FEED_INTERVAL_MINUTES * 60) \
     + (FEED_INTERVAL_HOURS * 60 * 60) \
     + (FEED_INTERVAL_DAYS * 60 * 60 * 24)
+
+FEED_DAILY_MAXIMUM = 2 # Set this to the amount of maximum feedings per 24 hours per user. 0 for infinite NOT RECOMMENDED
+
 #######################################################
 
 # This Dictionary is to be maintained of all users who have issued commands
 #       This will need to be expanded to allow for different timings on
 #       different commands
-# Key: String(msgAuthorName + command) | Value: DateTimeObject representing time of last command
+# Key: String(msgAuthorName + command) | Value: Array of size FEED_DAILY_MAXIMUM of type DateTimeObject representing time of last command
 DAILY_USER_DICT = {}
 
 
@@ -229,22 +232,62 @@ def mqtt_send(msg):
 
 def checkDictionary(key):
     global DAILY_USER_DICT
-
-    updateDateTime()
     printBetter(f"checking dictionary for {key}")
     if key in DAILY_USER_DICT:
         # Check to see if they fed more than FEED_INTERVAL_MINUTES + FEED_INTERVAL_SECONDS ago
-        timeUserLastFed = DAILY_USER_DICT.get(key)
+        timeUserLastFed = DAILY_USER_DICT.get(key[0]) #The first element in the array is the most recent feeding time
         printBetter(f"{key} at time {timeUserLastFed}")
-        #printBetter(f"Current time is:")
-        #printBetter(CURRENT_DATE_TIME)
-
         return True
-
+    
     else:
         printBetter(f"{key} not found in dictionary")
         return False
+    
+    
+    
+# Handle the writing out and saving of the new dictionary
+def writeOutDictionary():
+    global DAILY_USER_DICT
+    
 
+# Rotates a list x places left or right
+def rotate(input, n):
+    return input[n:] + input[:n]
+
+
+# Update dictionary to push on newest value, and pop off the oldest one, shifting everything over
+def updateDictionary(key, msgTime):
+    global DAILY_USER_DICT
+    global FEED_DAILY_MAXIMUM
+    logSize = FEED_DAILY_MAXIMUM
+    
+    userLog = DAILY_USER_DICT.get(key)
+    # Rotate list over to the right once, and replace first value
+    newUserLog = rotate(userLog, 1)
+    newUserLog[0] = msgTime
+    # newUserLog should now have an update log with the most recent X entries of feed times (X = FEED_DAILY_MAXIMUM)
+    printBetter(f"newUserLog: {newUserLog}")
+    DAILY_USER_DICT[key] = newUserLog
+    #printBetter("PRINTING DICTIONARY")
+    #print(DAILY_USER_DICT)
+    #print("END DICTIONARY")
+    writeOutDictionary()
+    
+
+# Create a new user in the dictionary
+def newUser(key, msgTime):
+    printBetter("key: " + key + " not found, creating new user entry")
+    global DAILY_USER_DICT
+    # Create at least of size 1
+    if (FEED_DAILY_MAXIMUM == 0):
+        keyArray = [None] * 1
+    else:
+        keyArray = [None] * FEED_DAILY_MAXIMUM    # Create new array for this user to hold their feeding times
+        
+    keyArray [0] = msgTime                        # Set first entry in their array to current time
+    DAILY_USER_DICT[key] = keyArray               # Add entry for user
+    writeOutDictionary()
+    
 
 # scan for all commands return a list
 # emptylist on no commands found
@@ -260,7 +303,9 @@ def parseChatForCommands(msgText):
 
 
 def checkWaitedEnough(key, msgTime):
-    timeUserLastFed = DAILY_USER_DICT.get(key)
+    userLog = DAILY_USER_DICT.get(key)
+    timeUserLastFed = userLog[0]
+    
     # Check difference between the Current time and timeUserLastFed
     #printBetter(f"CURRENT_DATE_TIME: {CURRENT_DATE_TIME}")
     printBetter(f"timeUserLastFed: {timeUserLastFed}")
@@ -305,6 +350,68 @@ def executeCommand(command):
         printBetter("*** *** *** *** ***")
         
 
+# Checks to see if user has hit their maximum for today
+#     Returns True if they have hit the daily limit
+def hitDailyLimit(key, msgTime):
+    global FEED_DAILY_MAXIMUM
+    global DAILY_USER_DICT
+    logSize = FEED_DAILY_MAXIMUM
+    updateDateTime()
+    
+    # If the programmer set this to zero, there is no limit so always return False
+    if FEED_DAILY_MAXIMUM == 0:
+        return False
+    
+    userLog = DAILY_USER_DICT.get(key)
+    # Check to see if last entry in array (oldest feed command entry) is greater than 1 day old or None
+    oldestFeedTime = userLog[-1]
+    #printBetter("PRINTING DICTIONARY")
+    #print(DAILY_USER_DICT)
+    #print("END DICTIONARY")
+    #printBetter(f"oldestFeedTime: {oldestFeedTime}")
+    if (oldestFeedTime == None):
+        # User has not fed up to maximum
+        return False
+    
+
+    # Check if oldestFeedTime is at least 24 hours old
+    timeDelta = CURRENT_DATE_TIME - oldestFeedTime
+    printBetter(f"timeDelta: {timeDelta}")
+    if (timeDelta.days >= 1):
+        return False
+    else:
+        return True
+    
+    
+    
+    
+
+
+# Determine if user can feed or not, for whatever reason
+def tailoredResponse(key, msgTime, msgAuthorName, command):
+    timeRemaining = checkWaitedEnough(key, msgTime)
+    dailyLimit = hitDailyLimit(key, msgTime)
+    if dailyLimit:
+        printBetter(f"User: {msgAuthorName} has reached their daily limit for the {command} command")
+        responseMessage = "Sorry %s, you have reached your daily limit (%s) for the %s command, try again tomorrow :)" % (
+            msgAuthorName, FEED_DAILY_MAXIMUM, command)
+        send_chat(responseMessage)
+        send_chat(msg_instruction)
+        
+    elif (timeRemaining == 0):
+        printBetter(f"User: {msgAuthorName} has waited long enough for the {command} command")
+        updateDictionary(key, msgTime)        # update dictionary with new time for this key (user + command)
+        richCommand(command, msgAuthorName)   # fire off the command (probably !feed)
+        
+    else:  # User has not waited long enough
+        printBetter(
+            f"User: {msgAuthorName} needs to wait {timeRemaining} more seconds before using the {command} command")
+        responseMessage = "Sorry %s, you must wait %d seconds before using the %s command again :)" % (
+            msgAuthorName, timeRemaining, command)
+        send_chat(responseMessage)
+        send_chat(msg_instruction)
+
+
 
 # msg in this case is a LiveChatMessage object defined in ytchat.py
 def respond(msg):
@@ -321,27 +428,15 @@ def respond(msg):
             key = msgAuthorName + command
             printBetter(f"key: {key}")
             dictionaryFound = checkDictionary(key)
-            if (dictionaryFound):
-                # Check if user has waited long enough to use this specific command
-                timeRemaining = checkWaitedEnough(key, msgTime)
-                if (timeRemaining == 0):
-                    printBetter(
-                        f"User: {msgAuthorName} has waited long enough for the {command} command")
-                    # update dictionary with new time for this key (user + command)
-                    DAILY_USER_DICT[key] = msgTime
-                    richCommand(command, msgAuthorName)
-                else:  # User has not waited long enough
-                    printBetter(
-                        f"User: {msgAuthorName} needs to wait {timeRemaining} more seconds before using the {command} command")
-                    responseMessage = "Sorry %s, you must wait %d seconds before using the %s command again :)" % (
-                        msgAuthorName, timeRemaining, command)
-                    send_chat(responseMessage)
-                    send_chat(msg_instruction)
+            if (dictionaryFound): # User is in the dictionary
+                # Check if user has waited long enough to use this specific command             
+                tailoredResponse(key, msgTime, msgAuthorName, command)
 
             else:  # User + Command not found in dictionary
-                DAILY_USER_DICT[key] = msgTime  # Add entry for user
+                newUser(key, msgTime)
                 printBetter("feeding now")
                 richCommand(command, msgAuthorName)
+
 
     else:  # Do nothing, no command found because commandsList is empty
         printBetter("no command found")
@@ -415,9 +510,9 @@ def start_livestream():
     offset_sec = 10 # Set start time to 10 seconds from now
     startTime = get_iso8601_time(offset_sec=15)
     startTimeStr = str(startTime)
-    endTime = get_iso8601_time(offset_year=1)
+    #endTime = get_iso8601_time(offset_year=1)   # Not apparently necessary, no end time provided = infinite stream
     printBetter(f"startTime: {startTime}")
-    printBetter(f"endTime: {endTime}")
+    #printBetter(f"endTime: {endTime}")
     titleStr = "Live Interactive Bird Feeder Arizona"
     descriptionStr = readFile("liveStreamDescription.txt")
     request = youtubeAPI.liveBroadcasts().insert(
