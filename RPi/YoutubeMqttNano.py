@@ -132,7 +132,7 @@ VALID_COMMANDS = ['!feed']
 nano_receive_address = "nano_36zcuomrbm6mudwused38ptrofk43kmqphuprcxwxkomk647wgaq6ocsweyb"
 minimimNanoThreshold = 0
 
-FEED_INTERVAL_SECONDS = 5  # Set this to amount of time before same user can
+FEED_INTERVAL_SECONDS = 30  # Set this to amount of time before same user can
 #                               feed again, 0 for instant
 FEED_INTERVAL_MINUTES = 0  # Set to 0 to turn off
 FEED_INTERVAL_HOURS = 0    # Set to 0 to turn off
