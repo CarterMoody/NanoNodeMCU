@@ -126,6 +126,7 @@ global client
 ##################### # USER PLEASE CHANGE/ALTER/ADD ############
 
 my_channel_name = "Patagonian Duck"
+GOD_MODE=True
 
 VALID_COMMANDS = ['!feed']
 
@@ -418,24 +419,35 @@ def respond(msg):
     msgTime = msg.datetime
     msgAuthorName = msg.author.name
     msgText = msg.message
+    
+
 
     # Check for presence of command
     commandsList = parseChatForCommands(msgText)
     if (commandsList):  # Check that list is not empty
-        # Check for user in dictionary
         for command in commandsList:
-            # Build a key based on Author's Name and Command Used
-            key = msgAuthorName + command
-            printBetter(f"key: {key}")
-            dictionaryFound = checkDictionary(key)
-            if (dictionaryFound): # User is in the dictionary
-                # Check if user has waited long enough to use this specific command             
-                tailoredResponse(key, msgTime, msgAuthorName, command)
-
-            else:  # User + Command not found in dictionary
-                newUser(key, msgTime)
-                printBetter("feeding now")
+        
+            # If GOD_MODE and it's me, bypass limits and return from function. Else treat as normal user
+            if (GOD_MODE & (msg.author.name == my_channel_name) ):
+                printBetter("God Mode enabled, and msg.author.name == my_channel_name")
                 richCommand(command, msgAuthorName)
+                return
+            
+            # Check for user in dictionary
+            else:
+            
+                # Build a key based on Author's Name and Command Used
+                key = msgAuthorName + command
+                printBetter(f"key: {key}")
+                dictionaryFound = checkDictionary(key)
+                if (dictionaryFound): # User is in the dictionary
+                    # Check if user has waited long enough to use this specific command             
+                    tailoredResponse(key, msgTime, msgAuthorName, command)
+
+                else:  # User + Command not found in dictionary
+                    newUser(key, msgTime)
+                    printBetter("feeding now")
+                    richCommand(command, msgAuthorName)
 
 
     else:  # Do nothing, no command found because commandsList is empty
