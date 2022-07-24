@@ -126,7 +126,9 @@ global client
 ##################### # USER PLEASE CHANGE/ALTER/ADD ############
 
 my_channel_name = "Patagonian Duck"
-GOD_MODE=True
+GOD_MODE=False
+
+
 
 VALID_COMMANDS = ['!feed']
 
@@ -152,6 +154,7 @@ FEED_DAILY_MAXIMUM = 2 # Set this to the amount of maximum feedings per 24 hours
 #       different commands
 # Key: String(msgAuthorName + command) | Value: Array of size FEED_DAILY_MAXIMUM of type DateTimeObject representing time of last command
 DAILY_USER_DICT = {}
+DICT_FILENAME = "DAILY_USER_DICT.pkl"
 
 
 ########### TIME ###########################
@@ -231,8 +234,37 @@ def mqtt_send(msg):
    client.publish('nodemcu/heartbeatAcknowledged', msg)
 
 
-def checkDictionary(key):
+# Refresh Global DAILY_USER_DICT by reading in the latest from the dictionary file on disk
+#    Should be called before reading anything from the global DAILY_USER_DICT
+def updateDictionary():
     global DAILY_USER_DICT
+    with open(DICT_FILENAME, 'rb') as file:
+        DAILY_USER_DICT = pickle.load(file)
+        
+        
+# Handle the writing out and saving of the new dictionary
+def writeOutDictionary():
+    global DAILY_USER_DICT
+    with open(DICT_FILENAME, 'wb') as file:
+        pickle.dump(DAILY_USER_DICT, file)
+        
+# Handle first time dictionary setup if there is no file
+def dictionarySetup():
+    # Check if .pkl file exists
+    if os.path.exists(DICT_FILENAME):
+        return
+    
+    # pkl DAILY_USER_DICT file does not exist, create a new one and then write out empty dictionary to it
+    else:
+        f = open(DICT_FILENAME, "x")
+        f.close()
+        writeOutDictionary()
+        
+        
+
+# Check dictionary for the presence of a key
+def checkDictionary(key):
+    updateDictionary()
     printBetter(f"checking dictionary for {key}")
     if key in DAILY_USER_DICT:
         # Check to see if they fed more than FEED_INTERVAL_MINUTES + FEED_INTERVAL_SECONDS ago
@@ -244,12 +276,6 @@ def checkDictionary(key):
         printBetter(f"{key} not found in dictionary")
         return False
     
-    
-    
-# Handle the writing out and saving of the new dictionary
-def writeOutDictionary():
-    global DAILY_USER_DICT
-    
 
 # Rotates a list x places left or right
 def rotate(input, n):
@@ -257,7 +283,8 @@ def rotate(input, n):
 
 
 # Update dictionary to push on newest value, and pop off the oldest one, shifting everything over
-def updateDictionary(key, msgTime):
+def addUserTime(key, msgTime):
+    updateDictionary()
     global DAILY_USER_DICT
     global FEED_DAILY_MAXIMUM
     logSize = FEED_DAILY_MAXIMUM
@@ -277,6 +304,7 @@ def updateDictionary(key, msgTime):
 
 # Create a new user in the dictionary
 def newUser(key, msgTime):
+    updateDictionary()
     printBetter("key: " + key + " not found, creating new user entry")
     global DAILY_USER_DICT
     # Create at least of size 1
@@ -304,6 +332,7 @@ def parseChatForCommands(msgText):
 
 
 def checkWaitedEnough(key, msgTime):
+    updateDictionary()
     userLog = DAILY_USER_DICT.get(key)
     timeUserLastFed = userLog[0]
     
@@ -354,6 +383,7 @@ def executeCommand(command):
 # Checks to see if user has hit their maximum for today
 #     Returns True if they have hit the daily limit
 def hitDailyLimit(key, msgTime):
+    updateDictionary()
     global FEED_DAILY_MAXIMUM
     global DAILY_USER_DICT
     logSize = FEED_DAILY_MAXIMUM
@@ -401,7 +431,7 @@ def tailoredResponse(key, msgTime, msgAuthorName, command):
         
     elif (timeRemaining == 0):
         printBetter(f"User: {msgAuthorName} has waited long enough for the {command} command")
-        updateDictionary(key, msgTime)        # update dictionary with new time for this key (user + command)
+        addUserTime(key, msgTime)        # update dictionary with new time for this key (user + command)
         richCommand(command, msgAuthorName)   # fire off the command (probably !feed)
         
     else:  # User has not waited long enough
@@ -775,6 +805,7 @@ def launch_async_tasks():
         loop.close()
     
 if __name__ == "__main__":
+    dictionarySetup()
     check_credentials()
     #start_livestream()
     #restartIPCamera()
