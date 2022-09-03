@@ -2,6 +2,8 @@ PATH=/home/pi/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
 
 declare -i inner_crash=0
 declare -i outer_crash=0
+declare -i sleep_time_seconds=2
+declare -i calculated_sleep_time=1
 
 restart_failed_process () {
     until /usr/bin/python3.7 /home/pi/Desktop/NanoNodeMCU/RPi/YoutubeMqttNano.py; do
