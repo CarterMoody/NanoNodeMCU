@@ -126,7 +126,7 @@ global client
 ##################### # USER PLEASE CHANGE/ALTER/ADD ############
 
 my_channel_name = "Patagonian Duck"
-GOD_MODE=False
+GOD_MODE=True
 
 
 
@@ -624,13 +624,36 @@ def get_broadcastId():
 #    I'm not sure how often, but it is subject to change while the BroadcastID
 #    remains the same.
 # # https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list
+# This is also the FIRST time we query Google API for some data, so it should be the first failure point if that setup is broken (like quota exceeded)
 def get_live_chat_id_for_stream_now():
     #print("get_live_chat_id_for_stream_now")
     request = youtubeAPI.liveBroadcasts().list(
         part="snippet",
         broadcastStatus="active"
     )
-    response = request.execute()
+    printBetter("trying request")
+    try:
+        response = request.execute()
+    except Exception as e:
+        printBetter("error on initial request fetching from Google")
+        printBetter(f"request error: {e}")
+        #printBetter("printing object")
+        #printBetter(type(e))
+        #printBetter(dir(e))
+        #statusCode = e.status_code
+        #reason = e.reason
+        printBetter(f"request error status code: {e.status_code}")
+        printBetter(f"request error reason: {e.reason}")
+        printBetter(f"request error details: {e.error_details}")
+        printBetter(f"request error details short Reason: {e.error_details[0].get('reason')}")
+        request_error_reason_short = e.error_details[0].get('reason')
+        if request_error_reason_short == "quotaExceeded":
+            printBetter("You have exceeded the Google Quota for API requests! Time to sleep for a bit...")
+            # The quota limit can be seen here https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=birdfeeder
+            # At last check, it seems that the daily quota is 10k requests! I will set sleep time to 1 hour
+            sleep(3600)
+        #printBetter(f"request error test: {e.
+        raise SystemExit(e)
     
     #print(response)
     try:

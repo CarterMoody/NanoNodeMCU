@@ -9,7 +9,9 @@ restart_failed_process () {
     until /usr/bin/python3.7 /home/pi/Desktop/NanoNodeMCU/RPi/YoutubeMqttNano.py; do
         echo "script crash# $inner_crash with exit code $?.  Respawning.." >&2
 	inner_crash+=1
-        sleep 2
+	calculated_sleep_time=$((sleep_time_seconds * inner_crash))
+	echo "sleeping for $calculated_sleep_time seconds" >&2
+        sleep $calculated_sleep_time
     done
 }
 
