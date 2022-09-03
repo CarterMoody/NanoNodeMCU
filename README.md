@@ -18,6 +18,14 @@ QUICK START (Assumes you have mqtt server up and running)
   8. Resync audio by running ./set64.sh and ./set48.sh which sends a request to the Dahua camera to switch audio sampling frequency, lining it back up (need to set a cron job to do this every 30 minutes! or else audio goes out of sync)    
 
 
+To see list of running cronjobs:
+	ps -o pid,sess,cmd afx | egrep -A20 "( |/)cron( -f)?$"
+First column is PID, second column is SessionID, third column is command started by cron
+To kill specific process find the PID associated with the crontab task at the lower (more root) level
+pkill -s <PID FROM FIRST COLUMN>
+
+
+
 # NanoNodeMCU
 React to NANO Network on NodeMCU
 
