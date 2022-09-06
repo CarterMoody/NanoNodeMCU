@@ -663,6 +663,7 @@ def get_live_chat_id_for_stream_now():
         return 69
     
 # Going to check and make sure stream is running
+# If not already running, go ahead and start_livestream then togggleIPCameraAudio to stop/start data stream to RTPM youtube
 def get_live_chat_id():
     livechat_id = get_live_chat_id_for_stream_now()
     while ( livechat_id == 69 ): # Failed to find livechat, need to try to launch a new livestream
