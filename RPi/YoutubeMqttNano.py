@@ -539,9 +539,10 @@ def setAudioSampleRate(frequency):
 def toggleIPCameraAudio():
     printBetter("Toggling Camera Audio")
     setAudioSampleRate("48000")
-    sleep(5)
+    sleep(10)
     setAudioSampleRate("64000")
-    sleep(5)
+    sleep(10)
+    printBetter("Camera Audio Toggled")
     return 1
 
 
@@ -668,14 +669,26 @@ def get_live_chat_id():
     livechat_id = get_live_chat_id_for_stream_now()
     while ( livechat_id == 69 ): # Failed to find livechat, need to try to launch a new livestream
         start_livestream()
-        sleep(120) # Give the camera time to start up. This value is technically smaller, as livestream has an offset
+        sleepBetter(120) # Give the camera time to start up. This value is technically smaller, as livestream has an offset
         toggleIPCameraAudio()
-        printBetter("Camera Audio Toggled")
-        sleep(30) # Give YouTube some time to connect the stream, and go live
+        sleepBetter(45)
+        toggleIPCameraAudio()
+        sleepBetter(45) # Give YouTube some time to connect the stream, and go live
         livechat_id = get_live_chat_id_for_stream_now()
-        sleep(5)
+        sleepBetter(5)
     return livechat_id
          
+        
+# Generic wrapper for sleep
+def sleepBetter(sleep_time):
+    printBetter(f"Sleeping for {sleep_time} seconds")
+    for i in range(0, sleep_time):
+        sleep(1)
+        if i == sleep_time:
+            print(".")
+        else:
+            print(".", end =" ", flush=True)
+    print(flush=True)
         
 # Generic wrapper to print which prints messages nicely with timestamp
 def printBetter(String):
@@ -829,6 +842,7 @@ def launch_async_tasks():
         loop.close()
     
 if __name__ == "__main__":
+    sleepBetter(5)
     dictionarySetup()
     check_credentials()
     #start_livestream()
