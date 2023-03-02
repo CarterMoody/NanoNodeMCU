@@ -690,12 +690,28 @@ def sleepBetter(sleep_time):
             print(".", end =" ", flush=True)
     print(flush=True)
         
+        
+# Logs out to daily log file
+def logBetter(String):
+    global CURRENT_DATE_TIME
+    updateDateTime()
+    todaysDate = str(CURRENT_DATE_TIME.year) + "_" + str(CURRENT_DATE_TIME.month) + "_" + str(CURRENT_DATE_TIME.day) 
+    logFilename = str(todaysDate) + "_Log"
+    logFilePathEndString = "/Logs/" + logFilename
+    currentPath = os.getcwd()
+    fullLogFilePathString = currentPath + logFilePathEndString
+    logFile = open(fullLogFilePathString, "a")
+    logFile.write("{:02d}:{:02d}:{:02d}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String))
+    logFile.write("\n")
+    logFile.close()
+        
 # Generic wrapper to print which prints messages nicely with timestamp
 def printBetter(String):
     global CURRENT_DATE_TIME
     updateDateTime()
     #print("|{}:{}:{}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), end='', flush=True)
     print("|{:02d}:{:02d}:{:02d}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), flush=True)
+    logBetter(String)
 
 def fillGlobalsPytChatObj():
     global livechat_id
