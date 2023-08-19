@@ -16,4 +16,9 @@ restart_failed_process () {
 }
 
 echo "return from restart_failed_process crash# $outer_crash"
-while true; do restart_failed_process sleep 2 ((outer_crash+=1)); done
+while true
+do 
+    restart_failed_process 
+    sleep 2 
+    outer_crash+=1
+done
