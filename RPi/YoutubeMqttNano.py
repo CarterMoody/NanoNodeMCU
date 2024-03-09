@@ -737,6 +737,22 @@ def raw_to_nano(raw): #This is NOT the correct way to do this (floating point er
 def nano_to_raw(raw): #Read comment above:
     return (int(raw) * 1000000000000000000000000000000)
 
+
+async def testNode(): # Make sure we can connect to this node
+    printBetter("in testNode")
+
+    try:
+        async with websockets.connect(activeNode, ssl=ssl_context) as websocket:
+            printBetter("No exceptions")
+        
+    except Exception as currentException:
+        printBetter(f"Exception in testNode: {currentException}")
+        return False
+    
+    else:    # Else block executes if no errors were thrown
+        printBetter("testNode websocket connection Successful")
+        return True
+
 def load_nodes(): #Load nodes.json file with all nodes (websocket addresses)
     global nodes
     printBetter("Loading list of nodes from file...")
@@ -744,19 +760,23 @@ def load_nodes(): #Load nodes.json file with all nodes (websocket addresses)
         nodes = json.load(file)
         printBetter("Nodes loaded.")
 
-def assign_random_node(): #Assign node randomly.
+async def assign_random_node(): #Assign node randomly.
     global activeNode
     printBetter("Assigning random node...")
     load_nodes()
     activeNode = nodes["nodes"][random.randint(0, len(nodes))]
     printBetter(f"Node assigned! ({activeNode})")
     
+    workingNode = await testNode()    # Tries to connect to node. Returns False if failed
+    printBetter(f"workingNode: {workingNode}")
+    return workingNode
+
+
 def websocket_initial_setup(): # Used to be run globally
     global ssl_context
     global nodes
     global activeNode
 
-    
     ssl_context = ssl.create_default_context() #Create SSL default cert. (websocket is TLS)
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
@@ -764,15 +784,31 @@ def websocket_initial_setup(): # Used to be run globally
     nodes = [] #In the future i want the ability to switch node. In case of an offline node. Thats why this is global.
 
     activeNode = "" #a node (websocket) will be randomly assigned to this string and used.
-    # Exception logic
-    #try:
-    assign_random_node() # Assign random socket node from file.
-    #asyncio.run(websocket_setup_listen())
+
+  
 
 async def websocket_setup_listen(): #Connect to websocket. Subscribe and listen for transactions.
     global websocket
     global client
     printBetter("doing the websocket thing")
+    
+    websocket_online = await assign_random_node()    # First let's make sure that we can connect to at least one node
+    while websocket_online == False:   # While this is still the case
+        printBetter("websocket_online = False, waiting 60 seconds before trying to grab another one")
+        websocket_online = await assign_random_node()   # Continue to check the nodes, but don't block on this function. Return to the other asyncio tasks (pytchat check)
+        await asyncio.sleep(60)
+    
+    printBetter(f"websocket_online: {websocket_online}")
+    try:
+        async with websockets.connect(activeNode, ssl=ssl_context) as websocket:
+            print("worked")
+
+    except Exception as currentException:
+        printBetter(f"Exception in testNode: {currentException}")
+        return False
+    
+    printBetter("hello2")
+
     async with websockets.connect(activeNode, ssl=ssl_context) as websocket:
         printBetter(f"Connected to websocket: {activeNode}\nSending subscription to websocket.")
         await websocket.send('{"action": "subscribe","topic": "confirmation","options":{"accounts": ["' + nano_receive_address + '"]}}') #F strings don't work :(
@@ -837,13 +873,8 @@ async def pytchat_check():
             #fillGlobalsPytChatObj()
             exit()
     
-
-
-  
   
 def launch_async_tasks():
-    websocket_initial_setup()
-    
     # New Async stuff from https://stackoverflow.com/questions/31623194/asyncio-two-loops-for-different-i-o-tasks
     try:
         loop = asyncio.get_event_loop()
@@ -853,18 +884,54 @@ def launch_async_tasks():
         loop.run_until_complete(websocket_setup_listen())
         #loop.run_forever(pytchat_check())
         #loop.run_forever()
+        
+        # 2023-11-20: Give cancelled tasks a chance to close properly?
+        # https://xinhuang.github.io/posts/2017-07-31-common-mistakes-using-python3-asyncio.html
+        #tasks = asyncio.Task.all_tasks()
+        #for t in [t for t in tasks if not (t.done() or t.cancelled())]:
+        #    loop.run_until_complete(t)
+        # 2023-11-20: This is causing tasks to never restart on failure, yet the script keeps working.
+        #    May need to figure out how to truly close tasks if I keep getting async crash errors...
+        
+    # 2023-11-20:
+    # An exception occurs within asyncio itself
+    # Likely, a task has not finished and we don't want to just bomb out quite yet
+    except Exception as currentException:
+        printBetter(f"Exception in Asyncio: {currentException}")
+        # Give cancelled tasks a chance to close properly?
+        # https://xinhuang.github.io/posts/2017-07-31-common-mistakes-using-python3-asyncio.html
+        tasks = asyncio.Task.all_tasks()
+        printBetter(f"Running all tasks until complete, to close them gracefully")
+        for t in [t for t in tasks if not (t.done() or t.cancelled())]:
+            #loop.run_until_complete(t) #We don't actually want to do this, because it will wait for this task to fail as well before restarting. Instead Cancel all tasks
+            # Cancel all tasks
+            t.cancel()
+            
+        printBetter("finished running and closing all tasks")         
+    # 2023-11-20: This may or may not be working. I need to exit async tasks gracefully on an exception, I may just be able to call this and then quit()?
+    #    Either way, async crashes are putting the forever script in an unrecoverable state, so I need to fix this...
+    #    Future Carter, this may or may not be the fix here in this above except block! Need to learn more asyncio!
+        
+
     finally:
         loop.run_until_complete(loop.shutdown_asyncgens())
         loop.close()
+        
+        
+        # 2023-11-23 maybe this is what the script needs to die and let forever3 relaunch it?
+        sys.exit()
+        
+     
     
 if __name__ == "__main__":
-    sleepBetter(5)
+    #sleepBetter(5)
     dictionarySetup()
     check_credentials()
     #start_livestream()
     #restartIPCamera()
     fillGlobalsPytChatObj()  # Give values to global variables. Needs refactoring lol
     mqtt_setup()  # Setup mqtt server
+    websocket_initial_setup()   # Setup the websocket
     launch_async_tasks()
     
     # Adding loop to test mqtt
