@@ -1,6 +1,7 @@
 {
 	"nodes": [
 		"wss://nanoslo.0x.no/websocket",
-		"wss://rainstorm.city/websocket"
+		"wss://rainstorm.city/websocket",
+		"wss://node.somenano.com/websocket"
 	]
 }

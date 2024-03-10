@@ -791,61 +791,73 @@ async def websocket_setup_listen(): #Connect to websocket. Subscribe and listen 
     global websocket
     global client
     printBetter("doing the websocket thing")
-    
-    websocket_online = await assign_random_node()    # First let's make sure that we can connect to at least one node
-    while websocket_online == False:   # While this is still the case
-        printBetter("websocket_online = False, waiting 60 seconds before trying to grab another one")
-        websocket_online = await assign_random_node()   # Continue to check the nodes, but don't block on this function. Return to the other asyncio tasks (pytchat check)
-        await asyncio.sleep(60)
-    
-    printBetter(f"websocket_online: {websocket_online}")
-    try:
-        async with websockets.connect(activeNode, ssl=ssl_context) as websocket:
-            print("worked")
 
-    except Exception as currentException:
-        printBetter(f"Exception in testNode: {currentException}")
-        return False
-    
-    printBetter("hello2")
-
-    async with websockets.connect(activeNode, ssl=ssl_context) as websocket:
-        printBetter(f"Connected to websocket: {activeNode}\nSending subscription to websocket.")
-        await websocket.send('{"action": "subscribe","topic": "confirmation","options":{"accounts": ["' + nano_receive_address + '"]}}') #F strings don't work :(
-        print(await websocket.recv())
-        printBetter("Subscribed!\nNow waiting for donations...\n\n")
-
-
-    
-        while 1: #Infinite listen loop. Listen for transactions
-            rec = json.loads(await websocket.recv()) #Get JSON transaction payload
-
-            #PUT YOUR LOGIC HERE!!!!
-            if "send" in rec["message"]["block"]["subtype"] and nano_receive_address not in rec['message']['account']: #If its a donation (if type is send). Print. usefull for Twitch bot integration.
+    while 1:
+        #printBetter("async task websocket_setup_listen")
+        #await asyncio.sleep(4)
+        websocket_online = await assign_random_node()    # First let's make sure that we can connect to at least one node
+        while websocket_online == False:   # While this is still the case
+            printBetter("websocket_online = False, waiting 60 seconds before trying to grab another one")
+            await asyncio.sleep(60)
+            websocket_online = await assign_random_node()   # Continue to check the nodes, but don't block on this function. Return to the other asyncio tasks (pytchat check)
             
-                confirmation = rec.get("topic", None) #Check if topic key exists. If not, make None.
-                if confirmation: #check if None.
-                    if confirmation == "confirmation": #Send NANO is legit and confirmed.
-                        accountAddress = rec['message']['account']
-                        amountRaw = rec['message']['amount']
-                        amountNANO = raw_to_nano(rec['message']['amount'])
-                        printBetter(f"GOT DONATION FROM {accountAddress}\nAmount RAW: {amountRaw}\nAmount NANO: {amountNANO}")
-                        if (int(amountRaw) > minimimNanoThreshold):
-                            printBetter("*** *** *** *** ***")
-                            printBetter("successful Nano donation... trying to send mqtt message")
-                            client.publish('nodemcu/runmotor', 'runmotor')
-                            printBetter("*** *** *** *** ***")
-                            responseMessage = "Received %s $NANO, Thanks a lot! Feeding now..." % (amountNANO)
-                            send_chat(responseMessage)    
-                        
+        printBetter(f"websocket_online: {websocket_online}")
+        try:
+            async with websockets.connect(activeNode, ssl=ssl_context) as websocket:
+                print("worked")
+
+        except Exception as currentException:
+            printBetter(f"Exception in testNode: {currentException}")
+            #return False
+        
+        printBetter("hello2")
+
+        try: 
+            async with websockets.connect(activeNode, ssl=ssl_context) as websocket:
+                printBetter(f"Connected to websocket: {activeNode}\nSending subscription to websocket.")
+                await websocket.send('{"action": "subscribe","topic": "confirmation","options":{"accounts": ["' + nano_receive_address + '"]}}') #F strings don't work :(
+                print(await websocket.recv())
+                printBetter("Subscribed!\nNow waiting for donations...\n\n")
 
 
+            
+                while 1: #Infinite listen loop. Listen for transactions
+                    printBetter("asyncio in while loop waiting on nano transactions")
+                    rec = json.loads(await websocket.recv()) #Get JSON transaction payload
+                    printBetter("finished awaiting on websocket.recv()")
 
+                    #PUT YOUR LOGIC HERE!!!!
+                    if "send" in rec["message"]["block"]["subtype"] and nano_receive_address not in rec['message']['account']: #If its a donation (if type is send). Print. usefull for Twitch bot integration.
+                    
+                        confirmation = rec.get("topic", None) #Check if topic key exists. If not, make None.
+                        if confirmation: #check if None.
+                            if confirmation == "confirmation": #Send NANO is legit and confirmed.
+                                accountAddress = rec['message']['account']
+                                amountRaw = rec['message']['amount']
+                                amountNANO = raw_to_nano(rec['message']['amount'])
+                                printBetter(f"GOT DONATION FROM {accountAddress}\nAmount RAW: {amountRaw}\nAmount NANO: {amountNANO}")
+                                if (int(amountRaw) > minimimNanoThreshold):
+                                    printBetter("*** *** *** *** ***")
+                                    printBetter("successful Nano donation... trying to send mqtt message")
+                                    client.publish('nodemcu/runmotor', 'runmotor')
+                                    printBetter("*** *** *** *** ***")
+                                    responseMessage = "Received %s $NANO, Thanks a lot! Feeding now..." % (amountNANO)
+                                    send_chat(responseMessage)
+                                    
+                    else:
+                        printBetter("we did not find a send block to our account")
+        
+        except Exception as currentException:
+            printBetter(f"Exception in main websocket.connect loop: {currentException}")
+                                    
+                                    
 
 # Adapted from here: https://github.com/taizan-hokuto/pytchat/wiki/LiveChatAsync
 # callback function is automatically called periodically
 async def pytchat_check():
     while 1:
+        #printBetter("asnyc task pytchat_check")
+        #await asyncio.sleep(1)
         if pytchatObj.is_alive():
             for msg in pytchatObj.get().sync_items():
                 #printBetter(f"NEW MESSAGE: {msg.datetime} {msg.author.name} {msg.message}")
@@ -866,12 +878,14 @@ async def pytchat_check():
     
         
         else:
-            # pytchatObj must not be alive anymore, try to reconnect
-            sleep(3)
+            # pytchatObj must not be alive anymore, try to reconnect?
+            await asyncio.sleep(5)
             printBetter("pytchatObj is not alive anymore... trying to create again...")
+            #pytchatObj = pytchat.create(video_id=broadcastId)
             #Handle gracefully without restart...
-            #fillGlobalsPytChatObj()
-            exit()
+            fillGlobalsPytChatObj()
+            
+            #exit()
     
   
 def launch_async_tasks():
