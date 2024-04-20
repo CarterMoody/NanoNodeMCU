@@ -550,8 +550,8 @@ def toggleIPCameraAudio():
 # https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/insert
 def start_livestream():
     printBetter("start_livestream")
-    offset_sec = 10 # Set start time to 10 seconds from now
-    startTime = get_iso8601_time(offset_sec=15)
+    offset_sec = 30 # Set start time to 30 seconds from now
+    startTime = get_iso8601_time(offset_sec)
     startTimeStr = str(startTime)
     #endTime = get_iso8601_time(offset_year=1)   # Not apparently necessary, no end time provided = infinite stream
     printBetter(f"startTime: {startTime}")
@@ -581,8 +581,13 @@ def start_livestream():
           }
         }
     )
-    response = request.execute()
-    #print(response)   
+    printBetter("Trying to send request to start livestream")
+    try:
+        response = request.execute()
+    except Exception as e:
+        printBetter("Error on send request to start livestream")
+    finally:
+        printBetter(response)   
 
 # Send Chat VIA YouTubeAPI
 # https://developers.google.com/youtube/v3/live/docs/liveChatMessages/insert?apix=true
@@ -600,8 +605,14 @@ def send_chat(text):
           }
         }
     )
-    response = request.execute()
-    #print(response)    
+    
+    printBetter("Trying to send request to send_chat")
+    try:
+        response = request.execute()
+    except Exception as e:
+        printBetter("Error on sending request to send_chat")
+    finally: 
+        printBetter(response)    
 
 
 # Get BroadcastID VIA YouTubeAPI
@@ -614,10 +625,18 @@ def get_broadcastId():
         part="id",
         broadcastStatus="active"
     )
-    response = request.execute()
     
-    #print(response)
-    return response['items'][0]['id']
+    
+    printBetter("Trying to send request to get_broadcastId")
+    try:
+        response = request.execute()
+    except Exception as e:
+        printBetter("Error on sending request to get_broadcastId")
+    else:
+        printBetter(response)
+        return response['items'][0]['id']
+    finally: 
+        printBetter(response)   
     
     
 # Returns YouTube LiveChatID. This is different from the BroadcastID because:
@@ -627,34 +646,58 @@ def get_broadcastId():
 # # https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/list
 # This is also the FIRST time we query Google API for some data, so it should be the first failure point if that setup is broken (like quota exceeded)
 def get_live_chat_id_for_stream_now():
-    #print("get_live_chat_id_for_stream_now")
+    printBetter("get_live_chat_id_for_stream_now")
     request = youtubeAPI.liveBroadcasts().list(
         part="snippet",
         broadcastStatus="active"
     )
     printBetter("trying request")
-    try:
-        response = request.execute()
-    except Exception as e:
-        printBetter("error on initial request fetching from Google")
-        printBetter(f"request error: {e}")
-        #printBetter("printing object")
-        #printBetter(type(e))
-        #printBetter(dir(e))
-        #statusCode = e.status_code
-        #reason = e.reason
-        printBetter(f"request error status code: {e.status_code}")
-        printBetter(f"request error reason: {e.reason}")
-        printBetter(f"request error details: {e.error_details}")
-        printBetter(f"request error details short Reason: {e.error_details[0].get('reason')}")
-        request_error_reason_short = e.error_details[0].get('reason')
-        if request_error_reason_short == "quotaExceeded":
-            printBetter("You have exceeded the Google Quota for API requests! Time to sleep for a bit...")
-            # The quota limit can be seen here https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=birdfeeder
-            # At last check, it seems that the daily quota is 10k requests! I will set sleep time to 1 hour
-            sleep(3600)
-        #printBetter(f"request error test: {e.
-        raise SystemExit(e)
+    
+    attempt = 0
+    gotAValidResponse = False
+    while gotAValidResponse == False:
+        printBetter(f"get_live_chat_id_for_stream_now | Attempt #: {attempt}")
+        try:
+            printBetter("executing request for get_live_chat_id_for_stream_now")
+            response = request.execute()
+        except Exception as currentException:
+            printBetter("error on initial request fetching from Google")
+            printBetter(f"request error: {currentException}")
+            #printBetter("printing object")
+            #printBetter(type(e))
+            #printBetter(dir(e))
+            #statusCode = e.status_code
+            #reason = e.reason
+            if hasattr(currentException, 'status_code'):
+                printBetter(f"request error status code: {currentException.status_code}")
+            if hasattr(currentException, 'reason'):
+                printBetter(f"request error reason: {currentException.reason}")
+            if hasattr(currentException, 'error_details'):
+                printBetter(f"request error details: {currentException.error_details}")
+                try:
+                    request_error_reason_short = e.error_details[0].get('reason')
+                except Exception as currentException:
+                    raise(currentException)
+                else:                   
+                    printBetter(f"request error details short Reason: {request_error_short}")
+                    if request_error_reason_short == "quotaExceeded":
+                        printBetter("You have exceeded the Google Quota for API requests! Time to sleep for a bit...")
+                        # The quota limit can be seen here https://console.cloud.google.com/apis/api/youtube.googleapis.com/quotas?project=birdfeeder
+                        # At last check, it seems that the daily quota is 10k requests! I will set sleep time to 1 hour
+                        sleep(3600)
+            #printBetter(f"request error test: {e.
+            #raise SystemExit(e)
+            printBetter("Sleeping 10 seconds * attempt before retrying request")
+            if sleepTime >= 600: # If sleeping greater than 10 minutes
+                sleepTime = 600
+            sleepBetter(sleepTime)
+            attempt += 1
+            
+            
+        else:
+            attempt = 0
+            gotAValidResponse = True
+            
     
     #print(response)
     try:
@@ -666,6 +709,7 @@ def get_live_chat_id_for_stream_now():
 # Going to check and make sure stream is running
 # If not already running, go ahead and start_livestream then togggleIPCameraAudio to stop/start data stream to RTPM youtube
 def get_live_chat_id():
+    printBetter("get_live_chat_id")
     livechat_id = get_live_chat_id_for_stream_now()
     while ( livechat_id == 69 ): # Failed to find livechat, need to try to launch a new livestream
         start_livestream()
@@ -701,7 +745,9 @@ def logBetter(String):
     currentPath = os.getcwd()
     fullLogFilePathString = currentPath + logFilePathEndString
     logFile = open(fullLogFilePathString, "a")
-    logFile.write("{:02d}:{:02d}:{:02d}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String))
+    todaysDate = str(CURRENT_DATE_TIME.year) + "_" + str(CURRENT_DATE_TIME.month) + "_" + str(CURRENT_DATE_TIME.day)
+    #logFile.write("{:02d}:{:02d}:{:02d}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String))
+    logFile.write("|{}|{:02d}:{:02d}:{:02d}|{}".format(todaysDate, CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String))
     logFile.write("\n")
     logFile.close()
         
@@ -710,10 +756,14 @@ def printBetter(String):
     global CURRENT_DATE_TIME
     updateDateTime()
     #print("|{}:{}:{}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), end='', flush=True)
-    print("|{:02d}:{:02d}:{:02d}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), flush=True)
+    #print("|{:02d}:{:02d}:{:02d}|{}".format(CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), flush=True)
+    todaysDate = str(CURRENT_DATE_TIME.year) + "_" + str(CURRENT_DATE_TIME.month) + "_" + str(CURRENT_DATE_TIME.day)
+    print("|{}|{:02d}:{:02d}:{:02d}|{}".format(todaysDate, CURRENT_DATE_TIME.hour, CURRENT_DATE_TIME.minute, CURRENT_DATE_TIME.second, String), flush=True)
+    
     logBetter(String)
 
 def fillGlobalsPytChatObj():
+    printBetter("fillGlobalsPytChatObj")
     global livechat_id
     global broadcastId
     global pytchatObj
@@ -753,6 +803,8 @@ async def testNode(): # Make sure we can connect to this node
         printBetter("testNode websocket connection Successful")
         return True
 
+# Load nodes from the Json file in the same directory
+#    These nodes are taken from a list of public Nano Nodes here: https://publicnodes.somenano.com/
 def load_nodes(): #Load nodes.json file with all nodes (websocket addresses)
     global nodes
     printBetter("Loading list of nodes from file...")
@@ -787,6 +839,14 @@ def websocket_initial_setup(): # Used to be run globally
 
   
 
+# Wait for receipt of websocket transactions.
+#   NOT CURRENTLY USED
+async def listen_websocket_nano_transactions():
+    await websocket.recv()
+    raise Exception('No data')
+    
+
+# Carter please refactor this, it's a huge function!
 async def websocket_setup_listen(): #Connect to websocket. Subscribe and listen for transactions.
     global websocket
     global client
@@ -795,8 +855,8 @@ async def websocket_setup_listen(): #Connect to websocket. Subscribe and listen 
     while 1:
         #printBetter("async task websocket_setup_listen")
         #await asyncio.sleep(4)
-        websocket_online = await assign_random_node()    # First let's make sure that we can connect to at least one node
-        while websocket_online == False:   # While this is still the case
+        websocket_online = await assign_random_node()       # First let's make sure that we can connect to at least one node
+        while websocket_online == False:                    # While this is still the case
             printBetter("websocket_online = False, waiting 60 seconds before trying to grab another one")
             await asyncio.sleep(60)
             websocket_online = await assign_random_node()   # Continue to check the nodes, but don't block on this function. Return to the other asyncio tasks (pytchat check)
@@ -804,48 +864,60 @@ async def websocket_setup_listen(): #Connect to websocket. Subscribe and listen 
         printBetter(f"websocket_online: {websocket_online}")
         try:
             async with websockets.connect(activeNode, ssl=ssl_context) as websocket:
-                print("worked")
+                printBetter("websocket connected")
 
         except Exception as currentException:
             printBetter(f"Exception in testNode: {currentException}")
             #return False
         
-        printBetter("hello2")
+        printBetter("Entering main Websocket Try/Except loop")
 
         try: 
             async with websockets.connect(activeNode, ssl=ssl_context) as websocket:
-                printBetter(f"Connected to websocket: {activeNode}\nSending subscription to websocket.")
+                printBetter(f"Connected to websocket: {activeNode}")
+                printBetter("Sending subscription to websocket.")
                 await websocket.send('{"action": "subscribe","topic": "confirmation","options":{"accounts": ["' + nano_receive_address + '"]}}') #F strings don't work :(
-                print(await websocket.recv())
+                printBetter(await websocket.recv())
                 printBetter("Subscribed!\nNow waiting for donations...\n\n")
 
 
             
                 while 1: #Infinite listen loop. Listen for transactions
                     printBetter("asyncio in while loop waiting on nano transactions")
-                    rec = json.loads(await websocket.recv()) #Get JSON transaction payload
-                    printBetter("finished awaiting on websocket.recv()")
-
-                    #PUT YOUR LOGIC HERE!!!!
-                    if "send" in rec["message"]["block"]["subtype"] and nano_receive_address not in rec['message']['account']: #If its a donation (if type is send). Print. usefull for Twitch bot integration.
+                    #rec = json.loads(await websocket.recv()) #Get JSON transaction payload
+                    #printBetter("finished awaiting on websocket.recv()")
                     
-                        confirmation = rec.get("topic", None) #Check if topic key exists. If not, make None.
-                        if confirmation: #check if None.
-                            if confirmation == "confirmation": #Send NANO is legit and confirmed.
-                                accountAddress = rec['message']['account']
-                                amountRaw = rec['message']['amount']
-                                amountNANO = raw_to_nano(rec['message']['amount'])
-                                printBetter(f"GOT DONATION FROM {accountAddress}\nAmount RAW: {amountRaw}\nAmount NANO: {amountNANO}")
-                                if (int(amountRaw) > minimimNanoThreshold):
-                                    printBetter("*** *** *** *** ***")
-                                    printBetter("successful Nano donation... trying to send mqtt message")
-                                    client.publish('nodemcu/runmotor', 'runmotor')
-                                    printBetter("*** *** *** *** ***")
-                                    responseMessage = "Received %s $NANO, Thanks a lot! Feeding now..." % (amountNANO)
-                                    send_chat(responseMessage)
-                                    
+                    #payload = await asyncio.wait_for(websocket.recv(), 10)    # This works to recylce every 10 seconds if no response
+                    try:
+                        payload = await asyncio.wait_for(websocket.recv(), 3600)    #3600 is equal to 1 hour of waiting
+                    except Exception as currentException:
+                            printBetter(f"Exception in websocket receipt, likely a timeout: {currentException}")
+                            raise(currentException)    # Bubble this exception up to the higher try/except block so that everything executes from the top again
+                            
                     else:
-                        printBetter("we did not find a send block to our account")
+                        rec = json.loads(payload)
+
+
+                        #PUT YOUR LOGIC HERE!!!!
+                        if "send" in rec["message"]["block"]["subtype"] and nano_receive_address not in rec['message']['account']: #If its a donation (if type is send). Print. usefull for Twitch bot integration.
+                        
+                            confirmation = rec.get("topic", None) #Check if topic key exists. If not, make None.
+                            if confirmation: #check if None.
+                                if confirmation == "confirmation": #Send NANO is legit and confirmed.
+                                    accountAddress = rec['message']['account']
+                                    amountRaw = rec['message']['amount']
+                                    amountNANO = raw_to_nano(rec['message']['amount'])
+                                    printBetter(f"GOT DONATION FROM {accountAddress}\nAmount RAW: {amountRaw}\nAmount NANO: {amountNANO}")
+                                    if (int(amountRaw) > minimimNanoThreshold):
+                                        printBetter("*** *** *** *** ***")
+                                        printBetter("successful Nano donation... trying to send mqtt message")
+                                        client.publish('nodemcu/runmotor', 'runmotor')
+                                        printBetter("*** *** *** *** ***")
+                                        responseMessage = "Received %s $NANO, Thanks a lot! Feeding now..." % (amountNANO)
+                                        send_chat(responseMessage)
+                                    
+                        else:
+                            printBetter("we did not find a send block to our account")
         
         except Exception as currentException:
             printBetter(f"Exception in main websocket.connect loop: {currentException}")
@@ -938,17 +1010,21 @@ def launch_async_tasks():
      
     
 if __name__ == "__main__":
-    #sleepBetter(5)
-    dictionarySetup()
-    check_credentials()
-    #start_livestream()
-    #restartIPCamera()
-    fillGlobalsPytChatObj()  # Give values to global variables. Needs refactoring lol
-    mqtt_setup()  # Setup mqtt server
-    websocket_initial_setup()   # Setup the websocket
-    launch_async_tasks()
+    while 1:
+        try:
+            #sleepBetter(5)
+            dictionarySetup()
+            check_credentials()
+            #start_livestream()
+            #restartIPCamera()
+            fillGlobalsPytChatObj()  # Give values to global variables. Needs refactoring lol
+            mqtt_setup()  # Setup mqtt server
+            websocket_initial_setup()   # Setup the websocket
+            launch_async_tasks()
     
-    # Adding loop to test mqtt
-    #while(1):
-    #    print("mqtt running")
-    #    sleep(5)
+            # Adding loop to test mqtt
+            #while(1):
+            #    print("mqtt running")
+            #    sleep(5)
+        except Exception as currentException:
+            printBetter(f"Exception in main: {currentException}")
